@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Smart Attendance</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899);
+            min-height: 100vh;
+        }
+        .register-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: none;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        .brand-title {
+            background: linear-gradient(90deg, #6366f1, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="register-card card shadow">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <h2 class="brand-title fw-bold fs-1">Smart Attendance</h2>
+                            <p class="text-muted">Create your account</p>
+                        </div>
+
+                        <form id="registerForm">
+                            <div class="mb-3">
+                                <label class="form-label fw-medium">Full Name</label>
+                                <input type="text" id="regName" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-medium">ID Number</label>
+                                <input type="text" id="regId" class="form-control" 
+                                       placeholder="2023001 (Student) or TEACHER01" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-medium">Email</label>
+                                <input type="email" id="regEmail" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-medium">Password</label>
+                                <input type="password" id="regPassword" class="form-control" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label fw-medium">Role</label>
+                                <select id="regRole" class="form-select">
+                                    <option value="student">Student</option>
+                                    <option value="teacher">Teacher</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 py-3 fw-semibold">
+                                Create Account
+                            </button>
+                        </form>
+
+                        <div class="text-center mt-3">
+                            <a href="login.html" class="text-decoration-none text-primary">
+                                Already have an account? Login here
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('regName').value.trim();
+            const id = document.getElementById('regId').value.trim().toUpperCase();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const role = document.getElementById('regRole').value;
+
+            if (!name || !id || !email || !password) {
+                alert("Please fill all fields");
+                return;
+            }
+
+            let users = JSON.parse(localStorage.getItem("users")) || [];
+
+            if (users.some(user => user.id === id)) {
+                alert("This ID is already registered!");
+                return;
+            }
+
+            users.push({
+                id: id,
+                name: name,
+                email: email,
+                password: password,
+                role: role
+            });
+
+            localStorage.setItem("users", JSON.stringify(users));
+
+            alert("✅ Registration successful!\nYou can now login with your ID and password.");
+            window.location.href = "login.html";
+        });
+    </script>
+</body>
+</html>
