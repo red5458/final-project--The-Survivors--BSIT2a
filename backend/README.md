@@ -60,5 +60,9 @@ API tested using Thunder Client.
 ---
 
 ## 👥 Group Members
+- Jexson Sedon
 - John Roan Ballester
-- (Add your members)
+- Michelle Diaz
+- Judy Pearl Balictar
+- Alyssa Jenille Reantaso
+- Ronel Garcia
