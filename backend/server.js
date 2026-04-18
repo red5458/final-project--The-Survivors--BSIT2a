@@ -1,14 +1,7 @@
-const dns = require('dns');
-// Force Cloudflare and Google DNS servers
-dns.setServers(['1.1.1.1', '8.8.8.8']);
-
-// Then your existing mongoose connection code
-const mongoose = require('mongoose');
-// ... rest of your code
-
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./config/db');
 
 const app = express();
@@ -20,12 +13,22 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// API Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
+
+// CRITICAL: Serve static files from frontend folder
+// This line was missing - it makes your HTML files accessible
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Handle all other routes by serving index.html
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`✅ Server running on port ${PORT}`);
+    console.log(`🌐 Website URL: http://localhost:${PORT}`);
 });

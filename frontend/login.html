@@ -66,38 +66,58 @@
     </div>
 
     <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+    // API Base URL - Change this if your backend is on different port/host
+    const API_URL = 'http://localhost:3000/api';
 
-            const id = document.getElementById('loginId').value.trim().toUpperCase();
-            const password = document.getElementById('loginPassword').value;
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
 
-            if (!id || !password) {
-                alert("Please enter ID and Password");
+        const id = document.getElementById('loginId').value.trim();
+        const password = document.getElementById('loginPassword').value;
+
+        if (!id || !password) {
+            alert("Please enter ID and Password");
+            return;
+        }
+
+        try {
+            // Call backend API
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    email: id,  // Send ID as email (or change backend to accept studentId)
+                    password: password 
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert(data.message || "Login failed");
                 return;
             }
 
-            let users = JSON.parse(localStorage.getItem("users")) || [];
-            const user = users.find(u => u.id === id && u.password === password);
+            // Save token and user info
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('currentUser', JSON.stringify(data.user));
 
-            if (!user) {
-                alert("❌ Invalid ID or Password. Please register first.");
-                return;
-            }
-
-            localStorage.setItem("currentUser", JSON.stringify({
-                id: user.id,
-                name: user.name,
-                role: user.role
-            }));
-
-            // Redirect to correct dashboard
-            if (user.role === "student" || id.startsWith("2023")) {
-                window.location.href = "student - dashboard.html";
+            // Redirect based on role
+            if (data.user.role === 'student') {
+                window.location.href = 'student-dashboard.html';
+            } else if (data.user.role === 'teacher') {
+                window.location.href = 'teacher-dashboard.html';
             } else {
-                window.location.href = "teacher-dashboard.html";   // Teacher interface
+                window.location.href = 'index.html';
             }
-        });
-    </script>
+
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Cannot connect to server. Make sure backend is running on port 3000.');
+        }
+    });
+</script>
 </body>
 </html> 

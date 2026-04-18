@@ -36,23 +36,38 @@
                         </div>
 
                         <form id="registerForm">
+                            <!-- Full Name -->
                             <div class="mb-3">
                                 <label class="form-label fw-medium">Full Name</label>
                                 <input type="text" id="regName" class="form-control" required>
                             </div>
+
+                            <!-- ID Number (Student ID or Teacher ID) -->
                             <div class="mb-3">
                                 <label class="form-label fw-medium">ID Number</label>
-                                <input type="text" id="regId" class="form-control" 
+                                <input type="text" id="regStudentId" class="form-control" 
                                        placeholder="2023001 (Student) or TEACHER01" required>
                             </div>
+
+                            <!-- Email -->
                             <div class="mb-3">
                                 <label class="form-label fw-medium">Email</label>
                                 <input type="email" id="regEmail" class="form-control" required>
                             </div>
+
+                            <!-- Password -->
                             <div class="mb-3">
                                 <label class="form-label fw-medium">Password</label>
                                 <input type="password" id="regPassword" class="form-control" required>
                             </div>
+
+                            <!-- Confirm Password -->
+                            <div class="mb-3">
+                                <label class="form-label fw-medium">Confirm Password</label>
+                                <input type="password" id="regConfirmPassword" class="form-control" required>
+                            </div>
+
+                            <!-- Role -->
                             <div class="mb-4">
                                 <label class="form-label fw-medium">Role</label>
                                 <select id="regRole" class="form-select">
@@ -60,6 +75,7 @@
                                     <option value="teacher">Teacher</option>
                                 </select>
                             </div>
+
                             <button type="submit" class="btn btn-primary w-100 py-3 fw-semibold">
                                 Create Account
                             </button>
@@ -77,39 +93,67 @@
     </div>
 
     <script>
-        document.getElementById('registerForm').addEventListener('submit', function(e) {
+        const API_URL = 'http://localhost:3000/api';
+
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const name = document.getElementById('regName').value.trim();
-            const id = document.getElementById('regId').value.trim().toUpperCase();
+            // Get all form values
+            const username = document.getElementById('regName').value.trim();
             const email = document.getElementById('regEmail').value.trim();
             const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('regConfirmPassword').value;
             const role = document.getElementById('regRole').value;
+            const studentId = document.getElementById('regStudentId').value.trim();
 
-            if (!name || !id || !email || !password) {
-                alert("Please fill all fields");
+            // Validation
+            if (!username || !email || !password || !studentId) {
+                alert("Please fill in all fields!");
                 return;
             }
 
-            let users = JSON.parse(localStorage.getItem("users")) || [];
-
-            if (users.some(user => user.id === id)) {
-                alert("This ID is already registered!");
+            if (password !== confirmPassword) {
+                alert("Passwords don't match!");
                 return;
             }
 
-            users.push({
-                id: id,
-                name: name,
-                email: email,
-                password: password,
-                role: role
-            });
+            if (password.length < 6) {
+                alert("Password must be at least 6 characters!");
+                return;
+            }
 
-            localStorage.setItem("users", JSON.stringify(users));
+            try {
+                console.log("Sending registration data:", { username, email, role, studentId });
 
-            alert("✅ Registration successful!\nYou can now login with your ID and password.");
-            window.location.href = "login.html";
+                const response = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username,
+                        email,
+                        password,
+                        role,
+                        studentId: role === 'student' ? studentId : undefined
+                    })
+                });
+
+                const data = await response.json();
+                console.log("Server response:", data);
+
+                if (!response.ok) {
+                    alert(data.message || "Registration failed");
+                    return;
+                }
+
+                alert('Registration successful! Please login.');
+                window.location.href = 'login.html';
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Cannot connect to server. Make sure backend is running on port 3000.');
+            }
         });
     </script>
 </body>
