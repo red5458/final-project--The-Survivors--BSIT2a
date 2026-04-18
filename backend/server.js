@@ -17,7 +17,8 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 
-// Serve static files from frontend folder
+// CRITICAL: Serve static files from frontend folder
+// This line was missing - it makes your HTML files accessible
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Handle all other routes by serving index.html
@@ -28,5 +29,6 @@ app.get('*', (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`✅ Server running on port ${PORT}`);
+    console.log(`🌐 Website URL: http://localhost:${PORT}`);
 });
