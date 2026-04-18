@@ -1,3 +1,11 @@
+const dns = require('dns');
+// Force Cloudflare and Google DNS servers
+dns.setServers(['1.1.1.1', '8.8.8.8']);
+
+// Then your existing mongoose connection code
+const mongoose = require('mongoose');
+// ... rest of your code
+
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
