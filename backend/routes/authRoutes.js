@@ -1,7 +1,33 @@
 const router = require('express').Router();
-const { register, login } = require('../controllers/authController');
+const { register, login, getAllUsers } = require('../controllers/authController');
+const { protect, authorize } = require('../middleware/authMiddleware');
+const { registerValidation, loginValidation, handleValidationErrors } = require('../middleware/validation');
 
-router.post('/register', register);
-router.post('/login', login);
+router.post('/register', 
+    registerValidation, 
+    handleValidationErrors, 
+    register
+);
+router.post('/login', 
+    loginValidation, 
+    handleValidationErrors, 
+    login
+);
+router.get('/users', protect, authorize('teacher', 'admin'), getAllUsers);
+router.get('/secure-data', 
+    protect, 
+    authorize('admin'), 
+    (req, res) => {
+        res.json({
+            success: true,
+            message: 'This is secure admin-only data',
+            data: {
+                systemStatus: 'operational',
+                totalUsers: 150,
+                lastBackup: new Date().toISOString()
+            }
+        });
+    }
+);
 
 module.exports = router;
