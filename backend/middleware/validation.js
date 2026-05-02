@@ -46,6 +46,7 @@ exports.checkInValidation = [
         .trim()
         .notEmpty().withMessage('Student ID is required')
 ];
+
 exports.handleValidationErrors = (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
