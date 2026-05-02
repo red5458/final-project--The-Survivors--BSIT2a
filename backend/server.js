@@ -6,22 +6,18 @@ const connectDB = require('./config/db');
 
 const app = express();
 
-// Connect DB
 connectDB();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// API Routes
+app.use(require('./middleware/logger').logger);
+
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 
-// CRITICAL: Serve static files from frontend folder
-// This line was missing - it makes your HTML files accessible
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// Handle all other routes by serving index.html
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
