@@ -1,6 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const xss = require('xss-clean');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const connectDB = require('./config/db');
 
@@ -8,8 +11,23 @@ const app = express();
 
 connectDB();
 
+app.use(helmet()); 
+app.use(xss()); 
 app.use(cors());
 app.use(express.json());
+
+const loginLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, 
+    max: 5, 
+    message: {
+        success: false,
+        message: 'Too many login attempts, please try again after 1 minute'
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+app.use('/api/auth/login', loginLimiter);
 
 app.use(require('./middleware/logger').logger);
 
@@ -27,4 +45,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`✅ Server running on port ${PORT}`);
     console.log(`🌐 Website URL: http://localhost:${PORT}`);
+    console.log(`🔒 Security features enabled: Helmet, XSS Protection, Rate Limiting`);
 });

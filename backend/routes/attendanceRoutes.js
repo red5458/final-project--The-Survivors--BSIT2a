@@ -4,12 +4,20 @@ const {
     getAll,
     getById,
     update,
-    deleteAttendance    
+    deleteAttendance
 } = require('../controllers/attendanceController');
 
 const { protect, authorize } = require('../middleware/authMiddleware');
+const { checkInValidation, handleValidationErrors } = require('../middleware/validation');
 
-router.post('/checkin', protect, authorize('student'), checkIn);
+router.post('/checkin', 
+    protect, 
+    authorize('student'), 
+    checkInValidation,
+    handleValidationErrors,
+    checkIn
+);
+
 router.get('/', protect, authorize('teacher', 'admin'), getAll);
 router.get('/:id', protect, authorize('teacher', 'admin'), getById);
 router.put('/:id', protect, authorize('admin'), update);

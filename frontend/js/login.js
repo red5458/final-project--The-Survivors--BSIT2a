@@ -1,3 +1,5 @@
+const API_URL = 'http://localhost:3000/api';
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('loginForm');
     
@@ -9,7 +11,6 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
-        // Get values - using email field for ID (can be email or student ID)
         const email = document.getElementById('loginId').value.trim();
         const password = document.getElementById('loginPassword').value;
         
@@ -21,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             console.log('Attempting login...', { email });
             
-            const response = await fetch('http://localhost:3000/api/auth/login', {
+            const response = await fetch(`${API_URL}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -33,21 +34,26 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Login response:', data);
             
             if (!response.ok) {
-                alert(`Error: ${data.message || 'Login failed'}`);
+                if (data.errors && Array.isArray(data.errors)) {
+                    const errorMessages = data.errors.map(err => `${err.field}: ${err.message}`).join('\n');
+                    alert(`Validation Errors:\n${errorMessages}`);
+                } else {
+                    alert(`Error: ${data.message || 'Login failed'}`);
+                }
                 return;
             }
             
-            // Save token and user data
             localStorage.setItem('token', data.token);
             localStorage.setItem('currentUser', JSON.stringify(data.user));
             
             alert('✅ Login successful!');
             
-            // Redirect based on role
             if (data.user.role === 'student') {
-                window.location.href = 'student-dashboard.html';
+                window.location.href = 'student - dashboard.html';
             } else if (data.user.role === 'teacher') {
                 window.location.href = 'teacher-dashboard.html';
+            } else if (data.user.role === 'admin') {
+                window.location.href = 'admin-dashboard.html';
             } else {
                 window.location.href = 'index.html';
             }
