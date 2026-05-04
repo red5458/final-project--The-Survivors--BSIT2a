@@ -115,7 +115,7 @@ exports.update = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
-exports.delete = async (req, res) => {
+exports.deleteAttendance = async (req, res) => {
     try {
         await Attendance.findByIdAndDelete(req.params.id);
 
