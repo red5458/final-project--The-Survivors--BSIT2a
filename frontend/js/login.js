@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const password = document.getElementById('loginPassword').value;
 
     if (!email || !password) {
-      alert('Please enter both ID/Email and Password!');
+      alert('Please enter both Email and Password!');
       return;
     }
 
