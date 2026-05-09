@@ -43,7 +43,31 @@
         .text-center { text-align: center; }
         .text-danger { color: #e74c3c; }
         .loading { padding: 2rem; text-align: center; color: #7f8c8d; }
+
+        .student-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .student-card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .student-card h4 { color: #2c3e50; margin-bottom: 1rem; font-size: 1.1rem; }
+        .student-card .student-id { color: #7f8c8d; font-size: 0.85rem; margin-bottom: 0.75rem; }
+        .mini-stats { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .mini-stat { padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500; }
+        .mini-stat.early { background: #d4edda; color: #155724; }
+        .mini-stat.ontime { background: #cce5ff; color: #004085; }
+        .mini-stat.late { background: #fff3cd; color: #856404; }
+        .mini-stat.absent { background: #f8d7da; color: #721c24; }
+        .progress-bar { width: 100%; height: 8px; background: #ecf0f1; border-radius: 4px; margin-top: 0.75rem; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+        .progress-fill.early { background: #27ae60; }
+        .progress-fill.ontime { background: #3498db; }
+        .progress-fill.late { background: #f39c12; }
+        .progress-fill.absent { background: #e74c3c; }
+        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid #ecf0f1; }
+        .tab { padding: 0.75rem 1.5rem; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s; }
+        .tab.active { border-bottom-color: #3498db; color: #3498db; font-weight: 600; }
+        .tab:hover { color: #3498db; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
     </style>
+<base target="_blank">
 </head>
 <body>
     <nav class="navbar">
@@ -55,7 +79,7 @@
     </nav>
 
     <div class="container">
-        <!-- Stats Section -->
+        <!-- Daily Stats Section -->
         <div class="stats-grid">
             <div class="stat-card early">
                 <h3>Early Today</h3>
@@ -79,38 +103,68 @@
             </div>
         </div>
 
-        <!-- Attendance Records -->
-        <div class="card">
-            <h2>📋 All Attendance Records</h2>
-            
-            <div class="filters">
-                <input type="text" id="searchInput" placeholder="🔍 Search by name or ID...">
-                <select id="statusFilter">
-                    <option value="">All Statuses</option>
-                    <option value="Early">Early</option>
-                    <option value="On-Time">On-Time</option>
-                    <option value="Late">Late</option>
-                    <option value="Absent">Absent</option>
-                </select>
-            </div>
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('records')">📋 All Attendance Records</div>
+            <div class="tab" onclick="switchTab('students')">👥 Student Activity Summary</div>
+        </div>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Student Name</th>
-                        <th>Student ID</th>
-                        <th>Date</th>
-                        <th>Time</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="attendanceTableBody">
-                    <tr>
-                        <td colspan="6" class="text-center loading">Loading attendance records...</td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- Attendance Records Tab -->
+        <div id="recordsTab" class="tab-content active">
+            <div class="card">
+                <h2>📋 All Attendance Records</h2>
+
+                <div class="filters">
+                    <input type="text" id="searchInput" placeholder="🔍 Search by name or ID...">
+                    <select id="statusFilter">
+                        <option value="">All Statuses</option>
+                        <option value="Early">Early</option>
+                        <option value="On-Time">On-Time</option>
+                        <option value="Late">Late</option>
+                        <option value="Absent">Absent</option>
+                    </select>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Student ID</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                        <tr>
+                            <td colspan="6" class="text-center loading">Loading attendance records...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Student Activity Summary Tab -->
+        <div id="studentsTab" class="tab-content">
+            <div class="card">
+                <h2>👥 Student Activity Summary</h2>
+                <p style="color: #7f8c8d; margin-bottom: 1rem;">View each student's attendance breakdown: Early, Late, and Absent counts</p>
+
+                <div class="filters">
+                    <input type="text" id="studentSearchInput" placeholder="🔍 Search student by name or ID...">
+                    <select id="sortFilter">
+                        <option value="name">Sort by Name</option>
+                        <option value="absent">Sort by Most Absent</option>
+                        <option value="late">Sort by Most Late</option>
+                        <option value="early">Sort by Most Early</option>
+                    </select>
+                </div>
+
+                <div id="studentSummaryGrid" class="student-summary-grid">
+                    <div class="text-center loading" style="grid-column: 1/-1;">Loading student activity data...</div>
+                </div>
+            </div>
         </div>
     </div>
 
