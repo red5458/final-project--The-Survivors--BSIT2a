@@ -8,7 +8,11 @@
     "dev": "nodemon server.js",
     "seed": "node scripts/seed.js"
   },
-  "keywords": ["attendance", "education", "api"],
+  "keywords": [
+    "attendance",
+    "education",
+    "api"
+  ],
   "author": "The Survivors - BSIT2A",
   "license": "ISC",
   "type": "commonjs",
