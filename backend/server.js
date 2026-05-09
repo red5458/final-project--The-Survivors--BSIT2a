@@ -1,5 +1,7 @@
-require('dotenv').config();
-console.log('MONGO_URI:', process.env.MONGO_URI);
+require('dotenv').config(); // <-- THIS IS THE MISSING PIECE!
+const dns = require('node:dns');
+dns.setServers(['8.8.8.8', '8.8.4.4']); 
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
