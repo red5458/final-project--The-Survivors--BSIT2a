@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Activity Summary Preview</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+        }
+        h1 { 
+            color: white; 
+            text-align: center; 
+            margin-bottom: 2rem; 
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        .filters { 
+            display: flex; 
+            gap: 1rem; 
+            margin-bottom: 1.5rem; 
+            flex-wrap: wrap; 
+            justify-content: center;
+        }
+        .filters input, .filters select { 
+            padding: 0.75rem 1rem; 
+            border: none; 
+            border-radius: 8px; 
+            font-size: 1rem; 
+            min-width: 250px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .student-summary-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+            gap: 1.5rem; 
+        }
+        .student-card { 
+            background: white; 
+            padding: 1.5rem; 
+            border-radius: 15px; 
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .student-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.2);
+        }
+        .student-card h4 { 
+            color: #2c3e50; 
+            margin-bottom: 0.5rem; 
+            font-size: 1.2rem; 
+        }
+        .student-id { 
+            color: #7f8c8d; 
+            font-size: 0.9rem; 
+            margin-bottom: 1rem;
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .mini-stats { 
+            display: flex; 
+            gap: 0.5rem; 
+            flex-wrap: wrap; 
+            margin-bottom: 1rem;
+        }
+        .mini-stat { 
+            padding: 0.4rem 0.8rem; 
+            border-radius: 20px; 
+            font-size: 0.85rem; 
+            font-weight: 600;
+        }
+        .mini-stat.early { background: #d4edda; color: #155724; }
+        .mini-stat.ontime { background: #cce5ff; color: #004085; }
+        .mini-stat.late { background: #fff3cd; color: #856404; }
+        .mini-stat.absent { background: #f8d7da; color: #721c24; }
+
+        .progress-section {
+            margin-top: 1rem;
+        }
+        .progress-bar-container {
+            display: flex;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #ecf0f1;
+            margin-bottom: 0.5rem;
+        }
+        .progress-segment {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+        .progress-segment.early { background: linear-gradient(90deg, #27ae60, #2ecc71); }
+        .progress-segment.ontime { background: linear-gradient(90deg, #3498db, #5dade2); }
+        .progress-segment.late { background: linear-gradient(90deg, #f39c12, #f5b041); }
+        .progress-segment.absent { background: linear-gradient(90deg, #e74c3c, #ec7063); }
+
+        .percentages {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #7f8c8d;
+        }
+        .total-records {
+            margin-top: 0.75rem;
+            font-size: 0.9rem;
+            color: #95a5a6;
+            text-align: center;
+            padding-top: 0.75rem;
+            border-top: 1px solid #ecf0f1;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: white;
+            font-size: 0.9rem;
+        }
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .legend-dot.early { background: #27ae60; }
+        .legend-dot.ontime { background: #3498db; }
+        .legend-dot.late { background: #f39c12; }
+        .legend-dot.absent { background: #e74c3c; }
+    </style>
+<base target="_blank">
+</head>
+<body>
+    <div class="container">
+        <h1>👥 Student Activity Summary</h1>
+        <p class="subtitle">Teacher Dashboard - View each student's attendance breakdown</p>
+
+        <div class="legend">
+            <div class="legend-item"><div class="legend-dot early"></div> Early</div>
+            <div class="legend-item"><div class="legend-dot ontime"></div> On-Time</div>
+            <div class="legend-item"><div class="legend-dot late"></div> Late</div>
+            <div class="legend-item"><div class="legend-dot absent"></div> Absent</div>
+        </div>
+
+        <div class="filters">
+            <input type="text" placeholder="🔍 Search student by name or ID...">
+            <select>
+                <option>Sort by Name</option>
+                <option>Sort by Most Absent</option>
+                <option>Sort by Most Late</option>
+                <option>Sort by Most Early</option>
+            </select>
+        </div>
+
+        <div class="student-summary-grid">
+            <!-- Example Student 1 - Good Student -->
+            <div class="student-card">
+                <h4>John Michael Doe</h4>
+                <div class="student-id">ID: 2026-1234-56789</div>
+                <div class="mini-stats">
+                    <span class="mini-stat early">Early: 8</span>
+                    <span class="mini-stat ontime">On-Time: 15</span>
+                    <span class="mini-stat late">Late: 1</span>
+                    <span class="mini-stat absent">Absent: 1</span>
+                </div>
+                <div class="progress-section">
+                    <div class="progress-bar-container">
+                        <div class="progress-segment early" style="width: 32%;"></div>
+                        <div class="progress-segment ontime" style="width: 60%;"></div>
+                        <div class="progress-segment late" style="width: 4%;"></div>
+                        <div class="progress-segment absent" style="width: 4%;"></div>
+                    </div>
+                    <div class="percentages">
+                        <span>32% Early</span>
+                        <span>60% On-Time</span>
+                        <span>4% Late</span>
+                        <span>4% Absent</span>
+                    </div>
+                </div>
+                <div class="total-records">📊 Total Records: 25</div>
+            </div>
+
+            <!-- Example Student 2 - Often Late -->
+            <div class="student-card">
+                <h4>Maria Santos Garcia</h4>
+                <div class="student-id">ID: 2026-5678-12345</div>
+                <div class="mini-stats">
+                    <span class="mini-stat early">Early: 2</span>
+                    <span class="mini-stat ontime">On-Time: 8</span>
+                    <span class="mini-stat late">Late: 10</span>
+                    <span class="mini-stat absent">Absent: 3</span>
+                </div>
+                <div class="progress-section">
+                    <div class="progress-bar-container">
+                        <div class="progress-segment early" style="width: 8.7%;"></div>
+                        <div class="progress-segment ontime" style="width: 34.8%;"></div>
+                        <div class="progress-segment late" style="width: 43.5%;"></div>
+                        <div class="progress-segment absent" style="width: 13%;"></div>
+                    </div>
+                    <div class="percentages">
+                        <span>8.7% Early</span>
+                        <span>34.8% On-Time</span>
+                        <span>43.5% Late</span>
+                        <span>13% Absent</span>
+                    </div>
+                </div>
+                <div class="total-records">📊 Total Records: 23</div>
+            </div>
+
+            <!-- Example Student 3 - Perfect Attendance -->
+            <div class="student-card">
+                <h4>James Anderson Lee</h4>
+                <div class="student-id">ID: 2026-9876-54321</div>
+                <div class="mini-stats">
+                    <span class="mini-stat early">Early: 12</span>
+                    <span class="mini-stat ontime">On-Time: 18</span>
+                    <span class="mini-stat late">Late: 0</span>
+                    <span class="mini-stat absent">Absent: 0</span>
+                </div>
+                <div class="progress-section">
+                    <div class="progress-bar-container">
+                        <div class="progress-segment early" style="width: 40%;"></div>
+                        <div class="progress-segment ontime" style="width: 60%;"></div>
+                        <div class="progress-segment late" style="width: 0%;"></div>
+                        <div class="progress-segment absent" style="width: 0%;"></div>
+                    </div>
+                    <div class="percentages">
+                        <span>40% Early</span>
+                        <span>60% On-Time</span>
+                        <span>0% Late</span>
+                        <span>0% Absent</span>
+                    </div>
+                </div>
+                <div class="total-records">📊 Total Records: 30 ⭐ Perfect Attendance!</div>
+            </div>
+
+            <!-- Example Student 4 - Frequently Absent -->
+            <div class="student-card">
+                <h4>Sarah Jane Wilson</h4>
+                <div class="student-id">ID: 2026-4567-89012</div>
+                <div class="mini-stats">
+                    <span class="mini-stat early">Early: 1</span>
+                    <span class="mini-stat ontime">On-Time: 5</span>
+                    <span class="mini-stat late">Late: 3</span>
+                    <span class="mini-stat absent">Absent: 8</span>
+                </div>
+                <div class="progress-section">
+                    <div class="progress-bar-container">
+                        <div class="progress-segment early" style="width: 5.9%;"></div>
+                        <div class="progress-segment ontime" style="width: 29.4%;"></div>
+                        <div class="progress-segment late" style="width: 17.6%;"></div>
+                        <div class="progress-segment absent" style="width: 47.1%;"></div>
+                    </div>
+                    <div class="percentages">
+                        <span>5.9% Early</span>
+                        <span>29.4% On-Time</span>
+                        <span>17.6% Late</span>
+                        <span>47.1% Absent</span>
+                    </div>
+                </div>
+                <div class="total-records">📊 Total Records: 17 ⚠️ High Absence Rate</div>
+            </div>
+
+            <!-- Example Student 5 -->
+            <div class="student-card">
+                <h4>Robert Chen Kim</h4>
+                <div class="student-id">ID: 2026-1111-22222</div>
+                <div class="mini-stats">
+                    <span class="mini-stat early">Early: 5</span>
+                    <span class="mini-stat ontime">On-Time: 10</span>
+                    <span class="mini-stat late">Late: 4</span>
+                    <span class="mini-stat absent">Absent: 2</span>
+                </div>
+                <div class="progress-section">
+                    <div class="progress-bar-container">
+                        <div class="progress-segment early" style="width: 23.8%;"></div>
+                        <div class="progress-segment ontime" style="width: 47.6%;"></div>
+                        <div class="progress-segment late" style="width: 19%;"></div>
+                        <div class="progress-segment absent" style="width: 9.5%;"></div>
+                    </div>
+                    <div class="percentages">
+                        <span>23.8% Early</span>
+                        <span>47.6% On-Time</span>
+                        <span>19% Late</span>
+                        <span>9.5% Absent</span>
+                    </div>
+                </div>
+                <div class="total-records">📊 Total Records: 21</div>
+            </div>
+
+            <!-- Example Student 6 -->
+            <div class="student-card">
+                <h4>Emily Rose Parker</h4>
+                <div class="student-id">ID: 2026-3333-44444</div>
+                <div class="mini-stats">
+                    <span class="mini-stat early">Early: 3</span>
+                    <span class="mini-stat ontime">On-Time: 14</span>
+                    <span class="mini-stat late">Late: 2</span>
+                    <span class="mini-stat absent">Absent: 1</span>
+                </div>
+                <div class="progress-section">
+                    <div class="progress-bar-container">
+                        <div class="progress-segment early" style="width: 15%;"></div>
+                        <div class="progress-segment ontime" style="width: 70%;"></div>
+                        <div class="progress-segment late" style="width: 10%;"></div>
+                        <div class="progress-segment absent" style="width: 5%;"></div>
+                    </div>
+                    <div class="percentages">
+                        <span>15% Early</span>
+                        <span>70% On-Time</span>
+                        <span>10% Late</span>
+                        <span>5% Absent</span>
+                    </div>
+                </div>
+                <div class="total-records">📊 Total Records: 20</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

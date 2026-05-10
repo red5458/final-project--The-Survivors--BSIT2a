@@ -6,29 +6,29 @@ exports.registerValidation = [
         .notEmpty().withMessage('Username is required')
         .isLength({ min: 3, max: 50 }).withMessage('Username must be 3-50 characters')
         .matches(/^[a-zA-Z\s]+$/).withMessage('Username can only contain letters and spaces'),
-    
+
     body('email')
         .trim()
         .notEmpty().withMessage('Email is required')
         .isEmail().withMessage('Please provide a valid email address')
         .normalizeEmail(),
-    
+
     body('password')
         .notEmpty().withMessage('Password is required')
         .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
         .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
         .matches(/[a-z]/).withMessage('Password must contain at least one lowercase letter')
         .matches(/[0-9]/).withMessage('Password must contain at least one number'),
-    
+
     body('role')
         .optional()
-        .isIn(['student', 'teacher', 'admin']).withMessage('Role must be student, teacher, or admin'),
-    
+        .isIn(['student', 'teacher']).withMessage('Role must be student or teacher'),
+
     body('studentId')
         .trim()
         .notEmpty().withMessage('Student ID is required')
-        .matches(/^(2023|2024|2025)\d{3}$|^(TEACHER|ADMIN)\d{2}$/i)
-        .withMessage('Invalid ID format. Use 2023XXX, 2024XXX, 2025XXX, or TEACHER01, ADMIN01')
+        .matches(/^20(2[0-6])-\d{4}-\d{5}$|^(TEACHER)\d{2}$/i)
+        .withMessage('Invalid ID format. Use YYYY-XXXX-XXXXX (2020-2026) for students or TEACHER01 for teachers')
 ];
 
 exports.loginValidation = [
@@ -36,7 +36,7 @@ exports.loginValidation = [
         .trim()
         .notEmpty().withMessage('Email is required')
         .isEmail().withMessage('Please provide a valid email address'),
-    
+
     body('password')
         .notEmpty().withMessage('Password is required')
 ];

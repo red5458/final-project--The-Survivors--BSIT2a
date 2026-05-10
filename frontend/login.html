@@ -20,9 +20,11 @@
         .brand-title {
             background: linear-gradient(90deg, #6366f1, #ec4899);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
     </style>
+<base target="_blank">
 </head>
 <body>
     <div class="container py-5">
@@ -37,9 +39,9 @@
 
                         <form id="loginForm">
                             <div class="mb-3">
-                                <label class="form-label fw-medium">ID Number</label>
-                                <input type="text" id="loginId" class="form-control form-control-lg" 
-                                       placeholder="2023001 or TEACHER01" required>
+                                <label class="form-label fw-medium">Email</label>
+                                <input type="email" id="loginEmail" class="form-control form-control-lg" 
+                                         placeholder="your.email@example.com" required>
                             </div>
                             <div class="mb-4">
                                 <label class="form-label fw-medium">Password</label>
@@ -57,68 +59,15 @@
                         </div>
 
                         <div class="text-center mt-4 small text-muted">
-                            Demo: Student <strong>2023001</strong> • Teacher <strong>TEACHER01</strong>
+                            Sign in with your registered email address
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <script>
-    // API Base URL - Change this if your backend is on different port/host
-    const API_URL = 'http://localhost:3000/api';
-
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-
-        const id = document.getElementById('loginId').value.trim();
-        const password = document.getElementById('loginPassword').value;
-
-        if (!id || !password) {
-            alert("Please enter ID and Password");
-            return;
-        }
-
-        try {
-            // Call backend API
-            const response = await fetch(`${API_URL}/auth/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ 
-                    email: id,  // Send ID as email (or change backend to accept studentId)
-                    password: password 
-                })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                alert(data.message || "Login failed");
-                return;
-            }
-
-            // Save token and user info
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('currentUser', JSON.stringify(data.user));
-
-            // Redirect based on role
-            if (data.user.role === 'student') {
-                window.location.href = 'student-dashboard.html';
-            } else if (data.user.role === 'teacher') {
-                window.location.href = 'teacher-dashboard.html';
-            } else {
-                window.location.href = 'index.html';
-            }
-
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Cannot connect to server. Make sure backend is running on port 3000.');
-        }
-    });
     </script>
+    <script src="js/auth.js"></script>
     <script src="js/login.js"></script>
 </body>
 </html>

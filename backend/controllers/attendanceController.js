@@ -1,132 +1,339 @@
 const Attendance = require('../models/Attendance');
+const User = require('../models/User');
 const cache = require('../utils/cache');
 
 const classifyTime = (time) => {
-    const hour = new Date(time).getHours();
+  const hour = new Date(time).getHours();
+  const minute = new Date(time).getMinutes();
 
-    if (hour < 8) return "Early";
-    if (hour === 8) return "On-Time";
-    if (hour > 8 && hour < 10) return "Late";
-    return "Absent";
+  if (hour < 8) return 'Early';
+  if (hour === 8 && minute <= 30) return 'On-Time'; 
+  if (hour === 8 && minute > 30 || hour === 9) return 'Late';
+  return 'Absent';
 };
 
 exports.checkIn = async (req, res) => {
-    try {
-        const { studentId } = req.body;
+  try {
+    const { studentId, subject, notes } = req.body;
 
-        const now = new Date();
-        const status = classifyTime(now);
-
-        const record = new Attendance({
-            studentId,
-            timeIn: now,
-            status
-        });
-
-        await record.save();
-
-        cache.del('attendance_all');
-
-        res.status(201).json({
-            success: true,
-            message: 'Check-in successful',
-            data: record
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+    // Verify student exists
+    const student = await User.findOne({ studentId });
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student ID not found' });
     }
+
+    const now = new Date();
+    const status = classifyTime(now);
+
+    const record = new Attendance({
+      studentId,
+      user: student._id,
+      timeIn: now,
+      status,
+      subject: subject || 'General',
+      notes: notes || ''
+    });
+
+    await record.save();
+
+    cache.del('attendance_all');
+    cache.del(`attendance_student_${studentId}`);
+    cache.del('attendance_student_summary');
+
+    res.status(201).json({
+      success: true,
+      message: 'Check-in successful',
+      data: {
+        ...record.toObject(),
+        studentName: student.username
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 exports.getAll = async (req, res) => {
-    try {
-        const cachedData = cache.get('attendance_all');
+  try {
+    const cachedData = cache.get('attendance_all');
 
-        if (cachedData) {
-            console.log(' Serving from cache');
-            return res.json({
-                success: true,
-                source: 'cache',
-                count: cachedData.length,
-                data: cachedData
-            });
-        }
-        const data = await Attendance.find()
-            .lean()           
-            .sort({ timeIn: -1 }); 
-        cache.set('attendance_all', data);
-        console.log(' Stored in cache');
-
-        res.json({
-            success: true,
-            source: 'database',
-            count: data.length,
-            data: data
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+    if (cachedData) {
+      console.log('📦 Serving attendance from cache');
+      return res.json({
+        success: true,
+        source: 'cache',
+        count: cachedData.length,
+        data: cachedData
+      });
     }
+
+    const data = await Attendance.find()
+      .populate('user', 'username email role')
+      .lean()
+      .sort({ timeIn: -1 });
+
+    cache.set('attendance_all', data);
+    console.log('💾 Attendance stored in cache');
+
+    res.json({
+      success: true,
+      source: 'database',
+      count: data.length,
+      data
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
+
+exports.getMyAttendance = async (req, res) => {
+  try {
+    const studentId = req.user.studentId || req.user.id;
+    const cacheKey = `attendance_student_${studentId}`;
+    const cachedData = cache.get(cacheKey);
+
+    if (cachedData) {
+      return res.json({
+        success: true,
+        source: 'cache',
+        count: cachedData.length,
+        data: cachedData
+      });
+    }
+
+    const data = await Attendance.find({ studentId })
+      .lean()
+      .sort({ timeIn: -1 });
+
+    cache.set(cacheKey, data);
+
+    res.json({
+      success: true,
+      source: 'database',
+      count: data.length,
+      data
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getById = async (req, res) => {
-    try {
-        const cacheKey = `attendance_${req.params.id}`;
-        const cachedData = cache.get(cacheKey);
+  try {
+    const cacheKey = `attendance_${req.params.id}`;
+    const cachedData = cache.get(cacheKey);
 
-        if (cachedData) {
-            return res.json({
-                success: true,
-                source: 'cache',
-                data: cachedData
-            });
-        }
-
-        const record = await Attendance.findById(req.params.id).lean();
-
-        if (!record) {
-            return res.status(404).json({ success: false, message: 'Record not found' });
-        }
-
-        cache.set(cacheKey, record);
-
-        res.json({
-            success: true,
-            source: 'database',
-            data: record
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+    if (cachedData) {
+      return res.json({
+        success: true,
+        source: 'cache',
+        data: cachedData
+      });
     }
+
+    const record = await Attendance.findById(req.params.id)
+      .populate('user', 'username email')
+      .lean();
+
+    if (!record) {
+      return res.status(404).json({ success: false, message: 'Record not found' });
+    }
+
+    cache.set(cacheKey, record);
+
+    res.json({
+      success: true,
+      source: 'database',
+      data: record
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
+
+exports.getStats = async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const stats = await Attendance.aggregate([
+      {
+        $match: {
+          timeIn: { $gte: today }
+        }
+      },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const statusCounts = {
+      Early: 0,
+      'On-Time': 0,
+      Late: 0,
+      Absent: 0
+    };
+
+    stats.forEach(stat => {
+      statusCounts[stat._id] = stat.count;
+    });
+
+    const total = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+
+    res.json({
+      success: true,
+      data: {
+        today: statusCounts,
+        total,
+        percentages: {
+          Early: total ? ((statusCounts.Early / total) * 100).toFixed(1) : 0,
+          'On-Time': total ? ((statusCounts['On-Time'] / total) * 100).toFixed(1) : 0,
+          Late: total ? ((statusCounts.Late / total) * 100).toFixed(1) : 0,
+          Absent: total ? ((statusCounts.Absent / total) * 100).toFixed(1) : 0
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// NEW: Get student summary - groups attendance by student with status counts
+exports.getStudentSummary = async (req, res) => {
+  try {
+    const cacheKey = 'attendance_student_summary';
+    const cachedData = cache.get(cacheKey);
+
+    if (cachedData) {
+      return res.json({
+        success: true,
+        source: 'cache',
+        count: cachedData.length,
+        data: cachedData
+      });
+    }
+
+    // Use MongoDB aggregation to group by student and count statuses
+    const summary = await Attendance.aggregate([
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'userInfo'
+        }
+      },
+      {
+        $unwind: {
+          path: '$userInfo',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $group: {
+          _id: '$studentId',
+          studentName: { $first: { $ifNull: ['$userInfo.username', '$studentId'] } },
+          email: { $first: { $ifNull: ['$userInfo.email', 'N/A'] } },
+          Early: {
+            $sum: { $cond: [{ $eq: ['$status', 'Early'] }, 1, 0] }
+          },
+          'On-Time': {
+            $sum: { $cond: [{ $eq: ['$status', 'On-Time'] }, 1, 0] }
+          },
+          Late: {
+            $sum: { $cond: [{ $eq: ['$status', 'Late'] }, 1, 0] }
+          },
+          Absent: {
+            $sum: { $cond: [{ $eq: ['$status', 'Absent'] }, 1, 0] }
+          },
+          total: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          studentId: '$_id',
+          studentName: 1,
+          email: 1,
+          Early: 1,
+          'On-Time': 1,
+          Late: 1,
+          Absent: 1,
+          total: 1,
+          percentages: {
+            Early: { $cond: [{ $eq: ['$total', 0] }, 0, { $multiply: [{ $divide: ['$Early', '$total'] }, 100] }] },
+            'On-Time': { $cond: [{ $eq: ['$total', 0] }, 0, { $multiply: [{ $divide: ['$On-Time', '$total'] }, 100] }] },
+            Late: { $cond: [{ $eq: ['$total', 0] }, 0, { $multiply: [{ $divide: ['$Late', '$total'] }, 100] }] },
+            Absent: { $cond: [{ $eq: ['$total', 0] }, 0, { $multiply: [{ $divide: ['$Absent', '$total'] }, 100] }] }
+          }
+        }
+      },
+      {
+        $sort: { studentName: 1 }
+      }
+    ]);
+
+    cache.set(cacheKey, summary);
+
+    res.json({
+      success: true,
+      source: 'database',
+      count: summary.length,
+      data: summary
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.update = async (req, res) => {
-    try {
-        const updated = await Attendance.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true }
-        ).lean();
-        cache.del('attendance_all');
-        cache.del(`attendance_${req.params.id}`);
+  try {
+    const updated = await Attendance.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    ).lean();
 
-        res.json({
-            success: true,
-            message: 'Updated successfully',
-            data: updated
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Record not found' });
     }
+
+    cache.del('attendance_all');
+    cache.del(`attendance_${req.params.id}`);
+    cache.del(`attendance_student_${updated.studentId}`);
+    cache.del('attendance_student_summary');
+
+    res.json({
+      success: true,
+      message: 'Updated successfully',
+      data: updated
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
+
 exports.deleteAttendance = async (req, res) => {
-    try {
-        await Attendance.findByIdAndDelete(req.params.id);
+  try {
+    const record = await Attendance.findByIdAndDelete(req.params.id);
 
-        cache.del('attendance_all');
-        cache.del(`attendance_${req.params.id}`);
-
-        res.json({
-            success: true,
-            message: 'Deleted successfully'
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+    if (!record) {
+      return res.status(404).json({ success: false, message: 'Record not found' });
     }
+
+    cache.del('attendance_all');
+    cache.del(`attendance_${req.params.id}`);
+    cache.del(`attendance_student_${record.studentId}`);
+    cache.del('attendance_student_summary');
+
+    res.json({
+      success: true,
+      message: 'Deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
