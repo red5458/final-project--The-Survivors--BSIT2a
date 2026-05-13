@@ -56,7 +56,30 @@ All data is stored securely in a structured database, ensuring reliability and e
 Attendance is recorded instantly upon submission, ensuring that time-tracking is accurate to the second.
 
 ---
+---
 
+## Project Development Timeline
+
+### Week 10 – Project Planning
+In this week our team drafted the project proposal, finalized the system concept, designed the database schema, and assigned specific roles to each member.
+
+### Week 11 – Backend Setup
+The backend server was initialized using Node.js and Express. API routes were created, and MongoDB was connected for database operations.
+
+### Week 12 – Frontend Design
+The system interface was designed using HTML, CSS, and Bootstrap, including the homepage, navigation layout, and basic user interface components.
+
+### Week 13 – Form Submission & Data Insertion
+Attendance forms were developed and integrated with backend APIs to validate and store student attendance records in the database.
+
+### Week 14 – Data Retrieval & Display
+Attendance records were fetched from MongoDB and displayed in dashboard tables for easier monitoring and tracking.
+
+### Week 15 – Update & Delete Functionality
+CRUD operations were completed by implementing edit and delete features for managing attendance records efficiently.
+
+### Week 16 – Final Testing & Documentation
+The team conducted system testing, fixed errors, improved the interface, finalized documentation, and prepared for project presentation and defense.
 
 
 
