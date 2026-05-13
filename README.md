@@ -1,3 +1,4 @@
+
 # Smart Attendance System with Auto-Time Classification
 
 <p align="center">
@@ -6,22 +7,35 @@
 
 ---
 
+<!-- 📌 SYSTEM PREVIEW IMAGE - add your image file first -->
+<p align="center">
+  <img src="assets/system-preview.png" alt="Smart Attendance System Interface Preview" width="850">
+</p>
+
+---
+
+## Live Deployment URL
+[Click here to access the system]()  
+<!-- URL:  -->
+
+---
+
 ## Project Overview
 In many educational institutions, attendance tracking is still done manually, leading to errors, time consumption, and inaccurate records. The **Smart Attendance System** is a web-based platform designed to automate this process. By utilizing real-time tracking and automated classification, the system provides a faster, more reliable, and user-friendly way of managing classroom attendance.
 
 ---
 
-## Meet the Team
-Our team consists of dedicated members handling specialized roles to ensure the project's success:
+## Meet the Team & Contributions
+Our team consists of dedicated members handling specialized roles to ensure the project's success. Below are the individual contributions of each member:
 
-| Name | Role |
-| :--- | :--- |
-| **Jexson Sedon** | Project Manager |
-| **John Roan Ballester** |  Backend Developer |
-| **Judy Pearl Balictar** |  Frontend Developer |
-| **Michelle Diaz** |  Database Manager |
-| **Alyssa Jenille Reantaso** |  GitHub Manager |
-| **Ronel Garcia** | Debugger |
+| Name | Role | Key Contributions |
+| :--- | :--- | :--- |
+| **Jexson Sedon** | Project Manager | Oversees overall project planning, timeline management, task distribution, and ensures all goals are met on schedule. |
+| **John Roan Ballester** | Backend Manager | Throughout the development of our system, he is very hardworking — responsible for building the server-side logic, developing APIs, handling data processing, and ensuring all system functions work smoothly. |
+| **Judy Pearl Balictar** | Frontend Manager | Designed and developed the entire user interface; created responsive, user-friendly pages including check-in forms, dashboard, and records table; ensured the layout is clean, intuitive, and works well on different devices. |
+| **Michelle Diaz** | Database Manager | Designed the database structure and schema; managed data organization, storage, and security; ensured accurate data saving, easy retrieval, and integrity of all attendance records. |
+| **Alyssa Jenille Reantaso** | GitHub Manager | Managed the project repository; handled version control, code organization, and file updates; coordinated team collaboration on GitHub and kept all project files properly maintained. |
+| **Ronel Garcia** | Documentation Officer / Debugger | Identified and fixed system errors and bugs during testing; performed quality checks; prepared and organized all project documents, reports, and written requirements for submission and presentation. |
 
 ---
 
@@ -80,6 +94,3 @@ CRUD operations were completed by implementing edit and delete features for mana
 
 ### Week 16 – Final Testing & Documentation
 The team conducted system testing, fixed errors, improved the interface, finalized documentation, and prepared for project presentation and defense.
-
-
-
