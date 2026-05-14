@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   const token = localStorage.getItem('token');
   const user = localStorage.getItem('currentUser');
 
@@ -17,15 +17,101 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('studentName').textContent = userData.username || 'Student';
   document.getElementById('studentId').textContent = userData.studentId || 'N/A';
 
-  document.getElementById('logoutBtn')?.addEventListener('click', function() {
+  document.getElementById('logoutBtn')?.addEventListener('click', function () {
     localStorage.removeItem('token');
     localStorage.removeItem('currentUser');
     window.location.href = 'login.html';
   });
 
+  // Load available sessions
+  async function loadAvailableSessions() {
+    const container = document.getElementById('availableSessionsContainer');
+    if (!container) return;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const response = await fetch(`/api/sessions?startDate=${today}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.data) {
+        container.innerHTML = '<p class="text-muted">No sessions available today</p>';
+        return;
+      }
+
+      const openSessions = data.data.filter(s => s.status === 'open');
+
+      if (openSessions.length === 0) {
+        container.innerHTML = '<p class="text-muted">No open sessions available today</p>';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="sessions-list">
+          ${openSessions.map(session => {
+        const date = new Date(session.sessionDate);
+        const time = `${session.startTime} - ${session.endTime}`;
+        return `
+              <div class="session-card" style="border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem; border-radius: 4px; background: #f9f9f9;">
+                <h4>${session.className}</h4>
+                <p style="margin: 0.5rem 0; color: #555;">
+                  📅 ${date.toLocaleDateString()} | 🕐 ${time}
+                </p>
+                <p style="margin: 0.5rem 0; font-size: 0.9rem; color: #7f8c8d;">Grace period: ${session.allowanceMinutes} minutes</p>
+                <button class="btn btn-primary" onclick="quickCheckIn('${session._id}', '${session.className}')" style="margin-top: 0.5rem;">
+                  ✅ Check In to This Class
+                </button>
+              </div>
+            `;
+      }).join('')}
+        </div>
+      `;
+    } catch (error) {
+      console.error('Error loading sessions:', error);
+      container.innerHTML = '<p class="text-danger">Failed to load available sessions</p>';
+    }
+  }
+
+  // Quick check-in to a specific session
+  window.quickCheckIn = async function (sessionId, className) {
+    const token = localStorage.getItem('token');
+
+    try {
+      const response = await fetch('/api/attendance/checkin-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          sessionId,
+          subject: className,
+          notes: ''
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(`❌ ${data.message || 'Check-in failed'}`);
+        return;
+      }
+
+      alert(`✅ Check-in successful!\nStatus: ${data.data.status}\nClass: ${className}`);
+      loadAttendanceHistory();
+      loadStats();
+      loadAvailableSessions();
+
+    } catch (error) {
+      console.error('Check-in error:', error);
+      alert('❌ Cannot connect to server.');
+    }
+  };
+
   const checkinForm = document.getElementById('checkinForm');
   if (checkinForm) {
-    checkinForm.addEventListener('submit', async function(e) {
+    checkinForm.addEventListener('submit', async function (e) {
       e.preventDefault();
 
       const subject = document.getElementById('subject')?.value || 'General';
@@ -57,7 +143,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         alert(`✅ Check-in successful! Status: ${data.data.status}`);
-        loadAttendanceHistory();  
+        loadAttendanceHistory();
+        loadAvailableSessions();
 
       } catch (error) {
         console.error('Check-in error:', error);
@@ -157,4 +244,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
   loadAttendanceHistory();
   loadStats();
+  loadAvailableSessions();
 });

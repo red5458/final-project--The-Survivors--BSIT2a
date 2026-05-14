@@ -1,6 +1,8 @@
 const Attendance = require('../models/Attendance');
 const User = require('../models/User');
 const ClassSchedule = require('../models/ClassSchedule');
+const AttendanceSession = require('../models/AttendanceSession');
+const ClassRoster = require('../models/ClassRoster');
 const cache = require('../utils/cache');
 
 const classifyTime = (time, schedule) => {
@@ -13,12 +15,14 @@ const classifyTime = (time, schedule) => {
     const [startHour, startMin] = schedule.startTime.split(':').map(Number);
     const startTotal = startHour * 60 + startMin;
     const allowance = schedule.allowanceMinutes ?? 5;
-    const lateThreshold = startTotal + allowance;
-    const absentThreshold = startTotal + 60; // 1 hour after start = Absent
+    const onTimeThreshold = startTotal + allowance;
+    const endTotal = schedule.endTime
+      ? schedule.endTime.split(':').map(Number).reduce((sum, value, idx) => sum + value * (idx === 0 ? 60 : 1), 0)
+      : startTotal + 60;
 
     if (totalMinutes < startTotal) return 'Early';
-    if (totalMinutes <= lateThreshold) return 'On-Time';
-    if (totalMinutes < absentThreshold) return 'Late';
+    if (totalMinutes <= onTimeThreshold) return 'On-Time';
+    if (totalMinutes <= endTotal) return 'Late';
     return 'Absent';
   }
 
@@ -29,6 +33,92 @@ const classifyTime = (time, schedule) => {
   return 'Absent';
 };
 
+// Check in with session ID (new session-based check-in)
+exports.checkInWithSession = async (req, res) => {
+  try {
+    const { sessionId, subject, notes } = req.body;
+
+    const student = await User.findById(req.user.id);
+    if (!student || student.role !== 'student') {
+      return res.status(403).json({ success: false, message: 'Only student accounts can check in' });
+    }
+
+    const session = await AttendanceSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'Session not found' });
+    }
+
+    if (session.status === 'closed') {
+      return res.status(400).json({ success: false, message: 'This session is closed' });
+    }
+
+    const studentIdValue = student.studentId || student._id.toString();
+
+    // Validate student is in roster for this class
+    const rosterEntry = await ClassRoster.findOne({
+      className: session.className,
+      studentId: studentIdValue,
+      isActive: true
+    });
+
+    if (!rosterEntry) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not enrolled in this class'
+      });
+    }
+
+    // Check if already checked in for this session
+    const alreadyCheckedIn = await Attendance.findOne({
+      session: sessionId,
+      studentId: studentIdValue
+    });
+
+    if (alreadyCheckedIn) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already checked in for this session'
+      });
+    }
+
+    const now = new Date();
+    const status = classifyTime(now, session);
+
+    const record = new Attendance({
+      session: session._id,
+      studentId: studentIdValue,
+      user: student._id,
+      timeIn: now,
+      status,
+      subject: subject || session.className,
+      notes: notes || '',
+      markedByAdmin: false
+    });
+
+    await record.save();
+
+    cache.del('attendance_all');
+    cache.del(`attendance_student_${studentIdValue}`);
+    cache.del('attendance_student_summary');
+
+    res.status(201).json({
+      success: true,
+      message: 'Check-in successful',
+      data: {
+        ...record.toObject(),
+        studentName: student.username,
+        session: {
+          className: session.className,
+          sessionDate: session.sessionDate
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Legacy check-in (backward compatibility with old flow)
 exports.checkIn = async (req, res) => {
   try {
     const { subject, notes } = req.body;
@@ -39,12 +129,30 @@ exports.checkIn = async (req, res) => {
     }
 
     const now = new Date();
+    const studentIdValue = student.studentId || student._id.toString();
+
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    // For legacy flow, check if already checked in today
+    const alreadyCheckedIn = await Attendance.findOne({
+      studentId: studentIdValue,
+      timeIn: { $gte: startOfDay, $lt: endOfDay },
+      markedByAdmin: false
+    });
+
+    if (alreadyCheckedIn) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already checked in today. Multiple same-day check-ins are not allowed.'
+      });
+    }
 
     // Fetch active schedule from DB
     const schedule = await ClassSchedule.findOne().sort({ updatedAt: -1 });
     const status = classifyTime(now, schedule);
-
-    const studentIdValue = student.studentId || student._id.toString();
 
     const record = new Attendance({
       studentId: studentIdValue,
@@ -52,7 +160,8 @@ exports.checkIn = async (req, res) => {
       timeIn: now,
       status,
       subject: subject || (schedule?.className) || 'General',
-      notes: notes || ''
+      notes: notes || '',
+      markedByAdmin: false
     });
 
     await record.save();
@@ -73,6 +182,7 @@ exports.checkIn = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 // Keep all other exports exactly as they were (getAll, getMyAttendance, getById, getStats, getStudentSummary, update, deleteAttendance)
 exports.getAll = async (req, res) => {

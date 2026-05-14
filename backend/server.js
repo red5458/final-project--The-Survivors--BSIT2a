@@ -54,7 +54,9 @@ app.use(require('./middleware/logger').logger);
 
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
-app.use('/api/schedule', require('./routes/classScheduleRoutes')); // NEW
+app.use('/api/schedule', require('./routes/classScheduleRoutes'));
+app.use('/api/sessions', require('./routes/attendanceSessionRoutes'));
+app.use('/api/roster', require('./routes/classRosterRoutes'));
 
 app.get('/api/health', (req, res) => {
   res.json({
