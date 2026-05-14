@@ -27,6 +27,145 @@ document.addEventListener('DOMContentLoaded', function () {
     window.location.href = 'login.html';
   });
 
+  let cachedClasses = [];
+  let cachedUsers = [];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  function classLabel(classItem) {
+    return [classItem.name, classItem.subject, classItem.section].filter(Boolean).join(' - ');
+  }
+
+  function daysLabel(days) {
+    return (days || []).map(day => dayNames[day]).filter(Boolean).join(', ') || 'N/A';
+  }
+
+  function formatTime12Hour(time) {
+    if (!time) return '--:--';
+    const [hourValue, minute = '00'] = time.split(':');
+    const hour = Number(hourValue);
+    if (Number.isNaN(hour)) return time;
+
+    const period = hour >= 12 ? 'pm' : 'am';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minute}${period}`;
+  }
+
+  function formatTimeRange(startTime, endTime) {
+    return `${formatTime12Hour(startTime)} - ${formatTime12Hour(endTime)}`;
+  }
+
+  function populateTeacherSelect() {
+    const teacherSelect = document.getElementById('classTeacherSelect');
+    if (!teacherSelect) return;
+
+    const teachers = cachedUsers.filter(u => u.role === 'teacher' || u.role === 'admin');
+    teacherSelect.innerHTML = teachers.length
+      ? '<option value="">Select teacher</option>' + teachers.map(t => `<option value="${t._id}">${t.username}</option>`).join('')
+      : '<option value="">No teacher accounts found</option>';
+  }
+
+  async function loadClasses() {
+    const tableBody = document.getElementById('classesTableBody');
+    const enrollClassSelect = document.getElementById('enrollClassSelect');
+
+    try {
+      const response = await fetch(`${API_URL}/classes`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await response.json();
+      cachedClasses = result.data || [];
+
+      if (enrollClassSelect) {
+        enrollClassSelect.innerHTML = cachedClasses.length
+          ? '<option value="">Select class</option>' + cachedClasses.map(c => `<option value="${c._id}">${classLabel(c)}</option>`).join('')
+          : '<option value="">No classes yet</option>';
+      }
+
+      if (!tableBody) return;
+      if (!response.ok || cachedClasses.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No class schedules created yet.</td></tr>';
+        return;
+      }
+
+      tableBody.innerHTML = cachedClasses.map(c => `
+        <tr>
+          <td><strong class="text-primary">${classLabel(c)}</strong></td>
+          <td>${c.subject || 'N/A'}</td>
+          <td>${c.teacher?.username || 'Unassigned'}</td>
+          <td>${daysLabel(c.daysOfWeek)}</td>
+          <td>${c.startTime && c.endTime ? formatTimeRange(c.startTime, c.endTime) : 'N/A'}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteClassSchedule('${c._id}', '${classLabel(c).replace(/'/g, "\\'")}')">
+              Delete
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (error) {
+      if (tableBody) tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load schedules</td></tr>';
+    }
+  }
+
+  window.deleteClassSchedule = async function (id, label) {
+    if (!confirm(`Delete class schedule "${label}"?`)) return;
+
+    try {
+      const response = await fetch(`${API_URL}/classes/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(`Failed: ${data.message || 'Unable to delete schedule'}`);
+        return;
+      }
+
+      await loadClasses();
+      await loadRoster();
+      alert('Class schedule deleted.');
+    } catch (error) {
+      alert('Cannot connect to server.');
+    }
+  };
+
+  document.getElementById('classForm')?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const payload = {
+      name: document.getElementById('classNameInput').value.trim(),
+      section: document.getElementById('classSectionInput').value.trim(),
+      subject: document.getElementById('classSubjectInput').value.trim(),
+      teacherId: document.getElementById('classTeacherSelect').value,
+      daysOfWeek: Array.from(document.querySelectorAll('.schedule-day:checked')).map(input => Number(input.value)),
+      startTime: document.getElementById('classStartTimeInput').value,
+      endTime: document.getElementById('classEndTimeInput').value,
+      allowanceMinutes: parseInt(document.getElementById('classAllowanceInput').value, 10) || 5
+    };
+
+    try {
+      const response = await fetch(`${API_URL}/classes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(`Failed: ${data.message}`);
+        return;
+      }
+
+      alert('Class schedule added successfully.');
+      e.target.reset();
+      await loadClasses();
+    } catch (error) {
+      alert('Cannot connect to server.');
+    }
+  });
+
   // ── 1. ROSTER MANAGEMENT (NEW) ──────────────────────────────────────
 
   async function loadRoster() {
@@ -53,9 +192,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
       rosterData.forEach(entry => {
         const studentName = entry.student ? entry.student.username : 'Unknown User';
+        const className = entry.class ? classLabel(entry.class) : entry.className;
         rosterHTML += `
           <tr>
-            <td><strong class="text-primary">${entry.className}</strong></td>
+            <td><strong class="text-primary">${className}</strong></td>
             <td>${entry.studentId}</td>
             <td>${studentName}</td>
             <td>
@@ -80,7 +220,9 @@ document.addEventListener('DOMContentLoaded', function () {
     enrollForm.addEventListener('submit', async function (e) {
       e.preventDefault();
       const studentId = document.getElementById('enrollStudentId').value.trim();
-      const className = document.getElementById('enrollClassName').value.trim();
+      const classSelect = document.getElementById('enrollClassSelect');
+      const classId = classSelect.value;
+      const className = classSelect.selectedOptions[0]?.textContent || 'class';
       const submitBtn = enrollForm.querySelector('button[type="submit"]');
 
       submitBtn.innerHTML = 'Enrolling...';
@@ -93,13 +235,13 @@ document.addEventListener('DOMContentLoaded', function () {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ studentId, className })
+          body: JSON.stringify({ studentId, classId })
         });
 
         const data = await response.json();
 
         if (response.ok) {
-          alert(`✅ Success: Student ${studentId} is now enrolled in ${className}`);
+          alert(`Success: Student ${studentId} is now enrolled in ${className}`);
           enrollForm.reset();
           loadRoster();
         } else {
@@ -146,13 +288,15 @@ document.addEventListener('DOMContentLoaded', function () {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
+      cachedUsers = data.data || [];
+      populateTeacherSelect();
 
-      if (!response.ok || !data.data || data.data.length === 0) {
+      if (!response.ok || cachedUsers.length === 0) {
         tableBody.innerHTML = '<tr><td colspan="5" class="text-center">No users found</td></tr>';
         return;
       }
 
-      tableBody.innerHTML = data.data.map(u => {
+      tableBody.innerHTML = cachedUsers.map(u => {
         let roleClass = 'badge-secondary';
         if (u.role === 'student') roleClass = 'bg-primary';
         if (u.role === 'teacher') roleClass = 'bg-success';
@@ -190,76 +334,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // ── 3. ATTENDANCE MANAGEMENT ────────────────────────────────────────
 
-  async function loadAttendance() {
-    const tableBody = document.getElementById('attendanceTableBody');
-    if (!tableBody) return;
-
-    try {
-      const response = await fetch(`${API_URL}/attendance`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-
-      if (!response.ok || !data.data || data.data.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No attendance records</td></tr>';
-        return;
-      }
-
-      tableBody.innerHTML = data.data.map(record => {
-        const date = new Date(record.timeIn).toLocaleDateString();
-        const time = record.markedByAdmin && record.status === 'Absent' ? '--:--' : new Date(record.timeIn).toLocaleTimeString();
-
-        let statusClass = 'bg-secondary';
-        if (record.status === 'Early') statusClass = 'bg-success';
-        if (record.status === 'On-Time') statusClass = 'bg-primary';
-        if (record.status === 'Late') statusClass = 'bg-warning text-dark';
-        if (record.status === 'Absent') statusClass = 'bg-danger';
-
-        return `
-          <tr>
-            <td>${record.user?.username || 'Unknown'}</td>
-            <td>${record.studentId || 'N/A'}</td>
-            <td>${date}</td>
-            <td>${time}</td>
-            <td><span class="badge ${statusClass}">${record.status}</span></td>
-            <td>${record.subject || 'General'}</td>
-            <td>
-              <button class="btn btn-sm btn-warning" onclick="editRecord('${record._id}')">Edit</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteRecord('${record._id}')">Delete</button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    } catch (error) {
-      tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Failed to load data</td></tr>';
-    }
-  }
-
-  window.deleteRecord = async function (id) {
-    if (!confirm('Are you sure you want to delete this record?')) return;
-    try {
-      const response = await fetch(`${API_URL}/attendance/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) { loadAttendance(); loadStats(); }
-    } catch (error) { alert('Error deleting record'); }
-  };
-
-  window.editRecord = async function (id) {
-    const newStatus = prompt('Enter new status (Early, On-Time, Late, Absent):');
-    if (!newStatus) return;
-    try {
-      const response = await fetch(`${API_URL}/attendance/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ status: newStatus })
-      });
-      if (response.ok) { loadAttendance(); loadStats(); }
-    } catch (error) { alert('Error updating record'); }
-  };
-
-
   // ── 4. STATS ────────────────────────────────────────────────────────
 
   async function loadStats() {
@@ -291,8 +365,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Init
+  loadClasses();
   loadRoster();
   loadUsers();
-  loadAttendance();
   loadStats();
 });

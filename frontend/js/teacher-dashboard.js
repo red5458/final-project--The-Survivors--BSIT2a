@@ -35,155 +35,210 @@ document.addEventListener('DOMContentLoaded', function () {
     evt.currentTarget.classList.add('active');
     document.getElementById(tabName + 'Tab').classList.add('active');
 
-    if (tabName === 'schedule') loadSchedule();
-    if (tabName === 'sessions') loadActiveSessions();
+    if (tabName === 'sessions') {
+      loadTodayClasses();
+    }
     if (tabName === 'records') loadAttendance();
   };
 
   // ── Session Management (NEW) ────────────────────────────────
 
-  // Pre-fill today's date in the session form
-  const dateInput = document.getElementById('sessionDate');
-  if (dateInput) {
-    dateInput.value = new Date().toISOString().split('T')[0];
+  function classLabel(classItem) {
+    return classItem.className || [classItem.name, classItem.section].filter(Boolean).join(' - ');
   }
 
-  async function loadActiveSessions() {
-    const grid = document.getElementById('activeSessionsGrid');
+  function formatTime12Hour(time) {
+    if (!time) return '--:--';
+    const [hourValue, minute = '00'] = time.split(':');
+    const hour = Number(hourValue);
+    if (Number.isNaN(hour)) return time;
+
+    const period = hour >= 12 ? 'pm' : 'am';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minute}${period}`;
+  }
+
+  function formatTimeRange(startTime, endTime) {
+    return `${formatTime12Hour(startTime)} - ${formatTime12Hour(endTime)}`;
+  }
+
+  function getScheduleState(schedule) {
+    const now = new Date();
+    const [startHour, startMinute] = (schedule.startTime || '00:00').split(':').map(Number);
+    const [endHour, endMinute] = (schedule.endTime || '00:00').split(':').map(Number);
+    const start = new Date(now);
+    start.setHours(startHour, startMinute, 0, 0);
+    const end = new Date(now);
+    end.setHours(endHour, endMinute, 0, 0);
+
+    if (now < start) return { label: 'Waiting', className: 'bg-secondary' };
+    if (now > end) return { label: 'Closed', className: 'bg-danger' };
+    return { label: 'Open', className: 'bg-success' };
+  }
+
+  async function loadTodayClasses() {
+    const grid = document.getElementById('todayClassesGrid');
     if (!grid) return;
 
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(`${API_URL}/sessions?startDate=${today}`, {
+      const response = await fetch(`${API_URL}/classes?today=true`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      const result = await response.json();
+      const classes = result.data || [];
 
-      const data = await response.json();
-
-      if (!response.ok || !data.data || data.data.length === 0) {
-        grid.innerHTML = '<p class="text-muted text-center p-3">No active sessions right now.</p>';
+      if (!response.ok || classes.length === 0) {
+        grid.innerHTML = '<p class="text-muted text-center p-3">No assigned classes scheduled for today.</p>';
         return;
       }
 
-      const openSessions = data.data.filter(s => s.status === 'open');
+      grid.innerHTML = classes.map(c => {
+        const label = classLabel(c);
+        const subject = c.subject || 'No subject';
+        const time = formatTimeRange(c.startTime, c.endTime);
+        const state = getScheduleState(c);
 
-      if (openSessions.length === 0) {
-        grid.innerHTML = '<p class="text-muted text-center p-3">No active sessions right now.</p>';
-        return;
-      }
-
-      grid.innerHTML = openSessions.map(session => {
-        const date = new Date(session.sessionDate).toLocaleDateString();
-        const time = `${session.startTime} - ${session.endTime}`;
         return `
           <div class="session-card p-3 border rounded bg-light d-flex justify-content-between align-items-center">
             <div>
-              <h4 class="mb-1 text-primary">${session.className}</h4>
-              <p class="mb-0 text-secondary">
-                <i class="fas fa-calendar-alt me-1"></i> ${date} | 
+              <h4 class="mb-1 text-primary">${label}</h4>
+              <p class="mb-1 fw-semibold">${subject}</p>
+              <p class="mb-1 text-secondary">
+                <i class="fas fa-calendar-alt me-1"></i> Today |
                 <i class="fas fa-clock me-1"></i> ${time}
               </p>
+              <p class="mb-0 text-muted small">Grace period: ${c.allowanceMinutes ?? 5} minutes</p>
             </div>
-            <button class="btn btn-danger" onclick="closeSession('${session._id}', '${session.className}')">
-              <i class="fas fa-stop-circle me-1"></i> Close Session
-            </button>
+            <span class="badge ${state.className}">${state.label}</span>
           </div>
         `;
       }).join('');
     } catch (error) {
-      console.error('Error loading sessions:', error);
-      grid.innerHTML = '<p class="text-danger text-center">Failed to load active sessions.</p>';
+      grid.innerHTML = '<p class="text-danger text-center">Failed to load today classes.</p>';
     }
   }
 
-  const startSessionForm = document.getElementById('startSessionForm');
-  if (startSessionForm) {
-    startSessionForm.addEventListener('submit', async function (e) {
-      e.preventDefault();
+  // ── Attendance Records ──────────────────────────────────────
+  let attendanceRecords = [];
+  let scheduleOptions = [];
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-      const submitBtn = startSessionForm.querySelector('button[type="submit"]');
-      const originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = 'Opening...';
-      submitBtn.disabled = true;
-
-      const payload = {
-        className: document.getElementById('sessionClassName').value,
-        sessionDate: document.getElementById('sessionDate').value,
-        startTime: document.getElementById('sessionStartTime').value,
-        endTime: document.getElementById('sessionEndTime').value,
-        allowanceMinutes: parseInt(document.getElementById('sessionAllowance').value) || 5
-      };
-
-      try {
-        const response = await fetch(`${API_URL}/sessions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          alert('✅ Session Opened Successfully! Students can now check in.');
-          startSessionForm.reset();
-          document.getElementById('sessionDate').value = new Date().toISOString().split('T')[0]; // reset date
-          loadActiveSessions();
-        } else {
-          alert(`❌ Failed: ${data.message}`);
-        }
-      } catch (error) {
-        console.error('Error starting session:', error);
-        alert('❌ Cannot connect to server.');
-      } finally {
-        submitBtn.innerHTML = originalText;
-        submitBtn.disabled = false;
-      }
-    });
+  function getRecordSubject(record) {
+    return record.class?.subject || record.subject || record.session?.className || 'General';
   }
 
-  window.closeSession = async function (sessionId, className) {
-    if (!confirm(`Are you sure you want to close "${className}"?\n\nAny student enrolled in the roster who has not checked in will be automatically marked as ABSENT.`)) {
+  function getRecordSchedule(record) {
+    const classSchedule = record.class;
+    const startTime = classSchedule?.startTime || record.session?.startTime || '';
+    const endTime = classSchedule?.endTime || record.session?.endTime || '';
+    const days = classSchedule?.daysOfWeek || [];
+    return {
+      days,
+      timeValue: startTime && endTime ? `${startTime}-${endTime}` : '',
+      timeLabel: startTime && endTime ? `${startTime} - ${endTime}` : 'N/A',
+      dayLabel: days.length ? days.map(day => dayNames[day]).join(', ') : new Date(record.timeIn).toLocaleDateString(undefined, { weekday: 'long' })
+    };
+  }
+
+  function scheduleFilterValue(schedule) {
+    return `${schedule._id || 'legacy'}|${schedule.startTime || ''}|${schedule.endTime || ''}`;
+  }
+
+  function scheduleFilterLabel(schedule) {
+    const subject = schedule.subject || classLabel(schedule);
+    const days = (schedule.daysOfWeek || []).map(day => dayNames[day]?.slice(0, 3)).filter(Boolean).join('/');
+    const time = schedule.startTime && schedule.endTime ? `${schedule.startTime} - ${schedule.endTime}` : 'No time';
+    return `${subject} - ${days || 'No day'} - ${time}`;
+  }
+
+  async function loadRecordFilters() {
+    try {
+      const response = await fetch(`${API_URL}/classes`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await response.json();
+      scheduleOptions = result.data || [];
+
+      const scheduleFilter = document.getElementById('scheduleFilter');
+      if (!scheduleFilter) return;
+
+      scheduleFilter.innerHTML = '<option value="">All Class Schedules</option>' + scheduleOptions
+        .map(schedule => `<option value="${scheduleFilterValue(schedule)}">${scheduleFilterLabel(schedule)}</option>`)
+        .join('');
+    } catch (error) {
+      console.error('Error loading record filters:', error);
+    }
+  }
+
+  function renderAttendance(records) {
+    const tableBody = document.getElementById('attendanceTableBody');
+    if (!tableBody) return;
+
+    if (!records.length) {
+      tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No attendance records match the filters</td></tr>';
       return;
     }
 
-    try {
-      const response = await fetch(`${API_URL}/sessions/${sessionId}/close`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+    tableBody.innerHTML = records.map(record => {
+      const date = new Date(record.timeIn).toLocaleDateString();
+      const time = record.markedByAdmin && record.status === 'Absent' ? '--:--' : new Date(record.timeIn).toLocaleTimeString();
+      const schedule = getRecordSchedule(record);
 
-      const data = await response.json();
+      let statusClass = 'badge-secondary';
+      if (record.status === 'Present') statusClass = 'bg-success';
+      if (record.status === 'Early') statusClass = 'bg-success';
+      if (record.status === 'On-Time') statusClass = 'bg-primary';
+      if (record.status === 'Late') statusClass = 'bg-warning text-dark';
+      if (record.status === 'Absent') statusClass = 'bg-danger';
+      if (record.status === 'Excused') statusClass = 'bg-info text-dark';
 
-      if (response.ok) {
-        alert(`✅ Session Closed.\n${data.absencesCreated || 0} students were automatically marked as Absent.`);
-        loadActiveSessions();
-        loadAttendance(); // Refresh records to show new absentees
-        loadStats();      // Refresh stats
-      } else {
-        alert(`❌ Failed to close session: ${data.message}`);
-      }
-    } catch (error) {
-      console.error('Error closing session:', error);
-      alert('❌ Cannot connect to server.');
-    }
-  };
+      const studentName = record.user?.username || record.studentId || 'Unknown';
+      const autoTag = record.markedByAdmin ? ' <small class="text-white-50">(Auto)</small>' : '';
 
+      return `
+        <tr>
+          <td>${studentName}</td>
+          <td>${record.studentId || 'N/A'}</td>
+          <td>${getRecordSubject(record)}</td>
+          <td>${schedule.dayLabel}<br><small class="text-muted">${schedule.timeLabel}</small></td>
+          <td>${date}</td>
+          <td>${time}</td>
+          <td><span class="badge ${statusClass}">${record.status}${autoTag}</span></td>
+          <td>
+            <button class="btn btn-sm btn-info" onclick="viewDetails('${record._id}')">View</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
 
-  // ── Attendance Records ──────────────────────────────────────
+  function applyAttendanceFilters() {
+    const searchValue = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+    const scheduleValue = document.getElementById('scheduleFilter')?.value || '';
+    const statusValue = document.getElementById('statusFilter')?.value || '';
+
+    const filtered = attendanceRecords.filter(record => {
+      const schedule = getRecordSchedule(record);
+      const studentName = (record.user?.username || '').toLowerCase();
+      const studentId = (record.studentId || '').toLowerCase();
+      const recordScheduleValue = `${record.class?._id || 'legacy'}|${record.class?.startTime || record.session?.startTime || ''}|${record.class?.endTime || record.session?.endTime || ''}`;
+
+      return (!searchValue || studentName.includes(searchValue) || studentId.includes(searchValue))
+        && (!scheduleValue || recordScheduleValue === scheduleValue)
+        && (!statusValue || record.status === statusValue);
+    });
+
+    renderAttendance(filtered);
+  }
 
   async function loadAttendance() {
     const tableBody = document.getElementById('attendanceTableBody');
     if (!tableBody) return;
 
-    tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Loading...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="8" class="text-center">Loading...</td></tr>';
 
     try {
+      await loadRecordFilters();
       const response = await fetch(`${API_URL}/attendance`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -191,48 +246,28 @@ document.addEventListener('DOMContentLoaded', function () {
       const data = await response.json();
 
       if (!response.ok) {
-        tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">${data.message}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">${data.message}</td></tr>`;
         return;
       }
 
       if (!data.data || data.data.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No attendance records yet</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="8" class="text-center">No attendance records yet</td></tr>';
         return;
       }
 
-      tableBody.innerHTML = data.data.map(record => {
-        const date = new Date(record.timeIn).toLocaleDateString();
-        // Handle automatically generated absences which might not have a useful timeIn
-        const time = record.markedByAdmin && record.status === 'Absent' ? '--:--' : new Date(record.timeIn).toLocaleTimeString();
-
-        let statusClass = 'badge-secondary';
-        if (record.status === 'Early') statusClass = 'bg-success';
-        if (record.status === 'On-Time') statusClass = 'bg-primary';
-        if (record.status === 'Late') statusClass = 'bg-warning text-dark';
-        if (record.status === 'Absent') statusClass = 'bg-danger';
-
-        const studentName = record.user?.username || record.studentId || 'Unknown';
-        const autoTag = record.markedByAdmin ? ' <small class="text-white-50">(Auto)</small>' : '';
-
-        return `
-          <tr>
-            <td>${studentName}</td>
-            <td>${record.studentId || 'N/A'}</td>
-            <td>${date}</td>
-            <td>${time}</td>
-            <td><span class="badge ${statusClass}">${record.status}${autoTag}</span></td>
-            <td>
-              <button class="btn btn-sm btn-info" onclick="viewDetails('${record._id}')">View</button>
-            </td>
-          </tr>
-        `;
-      }).join('');
+      attendanceRecords = data.data;
+      applyAttendanceFilters();
 
     } catch (error) {
       console.error('Error loading attendance:', error);
-      tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load data</td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Failed to load data</td></tr>';
     }
   }
+
+  ['searchInput', 'scheduleFilter', 'statusFilter'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', applyAttendanceFilters);
+    document.getElementById(id)?.addEventListener('change', applyAttendanceFilters);
+  });
 
   // ── Stats ───────────────────────────────────────────────────
 
@@ -294,53 +329,16 @@ document.addEventListener('DOMContentLoaded', function () {
           <div class="text-muted">ID: ${student.studentId}</div>
           <div class="mt-2">
             <span class="badge bg-success">Early: ${student.Early}</span>
+            <span class="badge bg-success">Present: ${student.Present || 0}</span>
             <span class="badge bg-primary">On-Time: ${student['On-Time']}</span>
             <span class="badge bg-warning text-dark">Late: ${student.Late}</span>
             <span class="badge bg-danger">Absent: ${student.Absent}</span>
+            <span class="badge bg-info text-dark">Excused: ${student.Excused || 0}</span>
           </div>
         </div>
       `;
     }).join('');
   }
-
-  // ── Legacy Class Schedule ───────────────────────────────────
-  async function loadSchedule() {
-    try {
-      const response = await fetch(`${API_URL}/schedule`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (data.data) {
-        document.getElementById('className').value = data.data.className || '';
-        document.getElementById('startTime').value = data.data.startTime || '';
-        document.getElementById('endTime').value = data.data.endTime || '';
-        document.getElementById('allowanceTime').value = data.data.allowanceMinutes ?? 5;
-      }
-    } catch (error) {
-      console.error('Error loading schedule:', error);
-    }
-  }
-
-  document.getElementById('scheduleForm')?.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    const payload = {
-      className: document.getElementById('className').value,
-      startTime: document.getElementById('startTime').value,
-      endTime: document.getElementById('endTime').value,
-      allowanceMinutes: parseInt(document.getElementById('allowanceTime').value)
-    };
-
-    try {
-      const response = await fetch(`${API_URL}/schedule`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(payload)
-      });
-      if (response.ok) alert('✅ Legacy schedule saved.');
-    } catch (err) {
-      alert('❌ Cannot connect to server.');
-    }
-  });
 
   // ── View Details ────────────────────────────────────────────
   window.viewDetails = async function (id) {
@@ -359,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function () {
   };
 
   // ── Init ────────────────────────────────────────────────────
-  loadActiveSessions();
+  loadTodayClasses();
   loadAttendance();
   loadStats();
   loadStudentSummary();

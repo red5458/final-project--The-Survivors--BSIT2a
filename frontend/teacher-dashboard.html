@@ -59,51 +59,17 @@
         </div>
 
         <div class="tabs">
-            <div class="tab active" onclick="switchTab(event, 'sessions')">🏫 Live Sessions</div>
+            <div class="tab active" onclick="switchTab(event, 'sessions')">Today's Classes</div>
             <div class="tab" onclick="switchTab(event, 'records')">📋 All Records</div>
             <div class="tab" onclick="switchTab(event, 'students')">👥 Student Summary</div>
-            <div class="tab" onclick="switchTab(event, 'schedule')">⚙️ Legacy Settings</div>
         </div>
 
         <div id="sessionsTab" class="tab-content active">
             <div class="card mb-4">
-                <h2>▶️ Start a New Class Session</h2>
-                <p class="text-muted">Open a session to allow students to check in right now.</p>
-                <form id="startSessionForm" class="row g-3 mt-2">
-                    <div class="col-md-6">
-                        <label class="form-label">Class Name</label>
-                        <input type="text" id="sessionClassName" class="form-control"
-                            placeholder="e.g. IT 112 - Web Systems" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Date</label>
-                        <input type="date" id="sessionDate" class="form-control" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Start Time</label>
-                        <input type="time" id="sessionStartTime" class="form-control" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">End Time</label>
-                        <input type="time" id="sessionEndTime" class="form-control" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Grace Period (mins)</label>
-                        <input type="number" id="sessionAllowance" class="form-control" value="5" min="0" required>
-                    </div>
-                    <div class="col-12 mt-4">
-                        <button type="submit" class="btn btn-success"><i class="fas fa-play me-2"></i>Open Class
-                            Session</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="card">
-                <h2>🔴 Active Sessions</h2>
-                <p class="text-muted">Classes that are currently open for check-ins. Close them when class is over to
-                    mark absences.</p>
-                <div id="activeSessionsGrid" class="d-flex flex-column gap-3 mt-3">
-                    <p class="text-center loading">Loading active sessions...</p>
+                <h2>Today's Assigned Classes</h2>
+                <p class="text-muted">Attendance opens and closes automatically based on the scheduled time.</p>
+                <div id="todayClassesGrid" class="d-flex flex-column gap-3 mt-3">
+                    <p class="text-center loading">Loading today's classes...</p>
                 </div>
             </div>
         </div>
@@ -113,12 +79,15 @@
                 <h2>📋 All Attendance Records</h2>
                 <div class="filters">
                     <input type="text" id="searchInput" placeholder="🔍 Search by name or ID...">
+                    <select id="scheduleFilter">
+                        <option value="">All Class Schedules</option>
+                    </select>
                     <select id="statusFilter">
                         <option value="">All Statuses</option>
-                        <option value="Early">Early</option>
-                        <option value="On-Time">On-Time</option>
+                        <option value="Present">Present</option>
                         <option value="Late">Late</option>
                         <option value="Absent">Absent</option>
+                        <option value="Excused">Excused</option>
                     </select>
                 </div>
                 <table class="table mt-3">
@@ -126,6 +95,8 @@
                         <tr>
                             <th>Student Name</th>
                             <th>Student ID</th>
+                            <th>Subject</th>
+                            <th>Schedule</th>
                             <th>Date</th>
                             <th>Time</th>
                             <th>Status</th>
@@ -134,7 +105,7 @@
                     </thead>
                     <tbody id="attendanceTableBody">
                         <tr>
-                            <td colspan="6" class="text-center loading">Loading attendance records...</td>
+                            <td colspan="8" class="text-center loading">Loading attendance records...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -161,35 +132,6 @@
             </div>
         </div>
 
-        <div id="scheduleTab" class="tab-content">
-            <div class="card">
-                <h2>📅 Legacy Schedule Settings</h2>
-                <p class="text-muted" style="margin-bottom: 1.5rem;">
-                    (Used for the old Quick Check-In. We recommend using the "Live Sessions" tab instead).
-                </p>
-                <form id="scheduleForm">
-                    <div class="form-group">
-                        <label for="className">Subject / Class Name</label>
-                        <input type="text" id="className" placeholder="e.g. Mathematics - Grade 10" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="startTime">Class Start Time</label>
-                        <input type="time" id="startTime" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="endTime">Class End Time</label>
-                        <input type="time" id="endTime" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="allowanceTime">Late Allowance (Minutes)</label>
-                        <input type="number" id="allowanceTime" min="0" max="30" value="5" required>
-                    </div>
-                    <div style="margin-top: 1.5rem;">
-                        <button type="submit" class="btn btn-primary">💾 Save Schedule</button>
-                    </div>
-                </form>
-            </div>
-        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

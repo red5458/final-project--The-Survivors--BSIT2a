@@ -73,7 +73,96 @@
             </div>
         </div>
 
-        <h2 class="section-title">🏫 Class Roster Management</h2>
+        <h2 class="section-title">Class Schedule Management</h2>
+        <div class="card mb-4">
+            <div class="row">
+                <div class="col-md-4 border-end">
+                    <h4 class="mb-3">Add Class Schedule</h4>
+                    <form id="classForm">
+                        <div class="mb-3">
+                            <label class="form-label">Class Name</label>
+                            <input type="text" id="classNameInput" class="form-control" placeholder="e.g. IT 112"
+                                required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Section</label>
+                            <input type="text" id="classSectionInput" class="form-control" placeholder="e.g. BSIT 2A">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Subject</label>
+                            <input type="text" id="classSubjectInput" class="form-control"
+                                placeholder="e.g. Web Systems">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Teacher</label>
+                            <select id="classTeacherSelect" class="form-select" required>
+                                <option value="">Loading teachers...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Days</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <label class="form-check-label"><input class="form-check-input schedule-day me-1"
+                                        type="checkbox" value="1">Mon</label>
+                                <label class="form-check-label"><input class="form-check-input schedule-day me-1"
+                                        type="checkbox" value="2">Tue</label>
+                                <label class="form-check-label"><input class="form-check-input schedule-day me-1"
+                                        type="checkbox" value="3">Wed</label>
+                                <label class="form-check-label"><input class="form-check-input schedule-day me-1"
+                                        type="checkbox" value="4">Thu</label>
+                                <label class="form-check-label"><input class="form-check-input schedule-day me-1"
+                                        type="checkbox" value="5">Fri</label>
+                                <label class="form-check-label"><input class="form-check-input schedule-day me-1"
+                                        type="checkbox" value="6">Sat</label>
+                                <label class="form-check-label"><input class="form-check-input schedule-day me-1"
+                                        type="checkbox" value="0">Sun</label>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Start Time</label>
+                                <input type="time" id="classStartTimeInput" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">End Time</label>
+                                <input type="time" id="classEndTimeInput" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Grace Period (mins)</label>
+                            <input type="number" id="classAllowanceInput" class="form-control" value="5" min="0"
+                                max="60" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Add Schedule</button>
+                    </form>
+                </div>
+
+                <div class="col-md-8">
+                    <h4 class="mb-3">Class Schedules</h4>
+                    <div class="table-responsive" style="max-height: 260px; overflow-y: auto;">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Class</th>
+                                    <th>Subject</th>
+                                    <th>Teacher</th>
+                                    <th>Days</th>
+                                    <th>Time</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="classesTableBody">
+                                <tr>
+                                    <td colspan="6" class="text-center loading">Loading schedules...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-title">Class Roster Management</h2>
         <div class="card mb-4">
             <div class="row">
                 <div class="col-md-4 border-end">
@@ -85,10 +174,10 @@
                                 required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Class Name</label>
-                            <input type="text" id="enrollClassName" class="form-control" placeholder="e.g. IT 112"
-                                required>
-                            <small class="text-muted">Must exactly match the class name the teacher creates.</small>
+                            <label class="form-label">Class</label>
+                            <select id="enrollClassSelect" class="form-select" required>
+                                <option value="">Create a class first</option>
+                            </select>
                         </div>
                         <button type="submit" class="btn btn-success w-100"><i class="fas fa-plus-circle me-1"></i>
                             Enroll Student</button>
@@ -138,27 +227,6 @@
             </table>
         </div>
 
-        <h2 class="section-title">📋 Attendance Management</h2>
-        <div class="card">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Student</th>
-                        <th>ID</th>
-                        <th>Date</th>
-                        <th>Time</th>
-                        <th>Status</th>
-                        <th>Subject</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="attendanceTableBody">
-                    <tr>
-                        <td colspan="7" class="text-center loading">Loading attendance records...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

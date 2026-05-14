@@ -6,6 +6,12 @@ const classRosterSchema = new mongoose.Schema({
         required: true,
         index: true
     },
+    class: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Class',
+        required: false,
+        index: true
+    },
     student: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -27,5 +33,6 @@ const classRosterSchema = new mongoose.Schema({
 
 classRosterSchema.index({ className: 1, studentId: 1 });
 classRosterSchema.index({ className: 1, student: 1 }, { unique: true });
+classRosterSchema.index({ class: 1, student: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('ClassRoster', classRosterSchema);

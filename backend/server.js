@@ -55,6 +55,7 @@ app.use('/api/auth/register', registerLimiter);
 app.use(require('./middleware/logger').logger);
 
 app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/classes', require('./routes/classRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 app.use('/api/schedule', require('./routes/classScheduleRoutes'));
 app.use('/api/sessions', require('./routes/attendanceSessionRoutes'));

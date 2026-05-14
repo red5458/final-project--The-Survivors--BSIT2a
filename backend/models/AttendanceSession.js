@@ -10,6 +10,12 @@ const attendanceSessionSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    class: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Class',
+        required: false,
+        index: true
+    },
     startTime: {
         type: String, // "HH:MM"
         required: true
@@ -39,5 +45,7 @@ const attendanceSessionSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 attendanceSessionSchema.index({ sessionDate: 1, className: 1 });
+attendanceSessionSchema.index({ className: 1, sessionDate: 1, status: 1 });
+attendanceSessionSchema.index({ class: 1, sessionDate: 1, status: 1 }, { sparse: true });
 
 module.exports = mongoose.model('AttendanceSession', attendanceSessionSchema);

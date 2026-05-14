@@ -29,46 +29,104 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // Load available sessions
+  function todayLocalDate() {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${now.getFullYear()}-${month}-${day}`;
+  }
+
+  function classLabel(classItem) {
+    return [classItem.name, classItem.subject, classItem.section].filter(Boolean).join(' - ') || classItem.className || 'Class';
+  }
+
+  function formatTime12Hour(time) {
+    if (!time) return '--:--';
+    const [hourValue, minute = '00'] = time.split(':');
+    const hour = Number(hourValue);
+    if (Number.isNaN(hour)) return time;
+
+    const period = hour >= 12 ? 'pm' : 'am';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minute}${period}`;
+  }
+
+  function formatTimeRange(startTime, endTime) {
+    return `${formatTime12Hour(startTime)} - ${formatTime12Hour(endTime)}`;
+  }
+
+  function getScheduleState(schedule) {
+    const now = new Date();
+    const [startHour, startMinute] = (schedule.startTime || '00:00').split(':').map(Number);
+    const [endHour, endMinute] = (schedule.endTime || '00:00').split(':').map(Number);
+    const start = new Date(now);
+    start.setHours(startHour, startMinute, 0, 0);
+    const end = new Date(now);
+    end.setHours(endHour, endMinute, 0, 0);
+
+    if (now < start) return { label: 'Waiting', className: 'bg-secondary', canCheckIn: false };
+    if (now > end) return { label: 'Closed', className: 'bg-danger', canCheckIn: false };
+    return { label: 'Open', className: 'bg-success', canCheckIn: true };
+  }
+
   async function loadAvailableSessions() {
     const container = document.getElementById('availableSessionsContainer');
     if (!container) return;
 
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const response = await fetch(`${API_URL}/sessions?startDate=${today}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const today = todayLocalDate();
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const [classesResponse, sessionsResponse, attendanceResponse] = await Promise.all([
+        fetch(`${API_URL}/classes?today=true`, { headers }),
+        fetch(`${API_URL}/sessions?startDate=${today}&endDate=${today}`, { headers }),
+        fetch(`${API_URL}/attendance/my-attendance`, { headers })
+      ]);
 
-      const data = await response.json();
+      const classesResult = await classesResponse.json();
+      const sessionsResult = await sessionsResponse.json();
+      const attendanceResult = await attendanceResponse.json();
 
-      if (!response.ok || !data.data || data.data.length === 0) {
-        container.innerHTML = '<p class="text-muted">No sessions available today.</p>';
+      const classes = classesResult.data || [];
+      const sessions = sessionsResult.data || [];
+      const records = attendanceResult.data || [];
+
+      if (!classesResponse.ok || classes.length === 0) {
+        container.innerHTML = '<p class="text-muted">No classes scheduled for you today.</p>';
         return;
       }
 
-      const openSessions = data.data.filter(s => s.status === 'open');
-
-      if (openSessions.length === 0) {
-        container.innerHTML = '<p class="text-muted">No open sessions right now. Waiting for the teacher to start class...</p>';
-        return;
-      }
+      const sessionsByClass = new Map(
+        sessions.map(session => [(session.class?._id || session.class || session.className || '').toString(), session])
+      );
+      const checkedSessionIds = new Set(records.filter(record => record.session).map(record => (record.session._id || record.session).toString()));
 
       container.innerHTML = `
         <div class="sessions-list d-flex flex-column gap-3">
-          ${openSessions.map(session => {
-        const date = new Date(session.sessionDate);
-        const time = `${session.startTime} - ${session.endTime}`;
+          ${classes.map(classItem => {
+        const session = sessionsByClass.get(classItem._id.toString());
+        const time = formatTimeRange(classItem.startTime, classItem.endTime);
+        const isCheckedIn = session && checkedSessionIds.has(session._id.toString());
+        const state = getScheduleState(classItem);
+        const statusClass = isCheckedIn ? 'bg-primary' : state.className;
+        const statusText = isCheckedIn ? 'Checked In' : state.label;
+        const action = state.canCheckIn && !isCheckedIn
+          ? `<button class="btn btn-success" onclick="quickCheckIn('${classItem._id}', '${classLabel(classItem).replace(/'/g, "\\'")}')">
+              <i class="fas fa-check-circle me-1"></i> Check In
+            </button>`
+          : `<button class="btn btn-outline-secondary" disabled>${statusText}</button>`;
+
         return `
               <div class="session-card p-3 border rounded bg-light">
-                <h4 class="mb-2 text-primary">${session.className}</h4>
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                  <h4 class="mb-2 text-primary">${classLabel(classItem)}</h4>
+                  <span class="badge ${statusClass}">${statusText}</span>
+                </div>
                 <p class="mb-1 text-secondary">
-                  <i class="fas fa-calendar-alt me-1"></i> ${date.toLocaleDateString()} | 
+                  <i class="fas fa-calendar-alt me-1"></i> Today | 
                   <i class="fas fa-clock me-1"></i> ${time}
                 </p>
-                <p class="mb-3 text-muted small">Grace period: ${session.allowanceMinutes} minutes</p>
-                <button class="btn btn-success" onclick="quickCheckIn('${session._id}', '${session.className}')">
-                  <i class="fas fa-check-circle me-1"></i> Check In to This Class
-                </button>
+                <p class="mb-3 text-muted small">Grace period: ${classItem.allowanceMinutes ?? 5} minutes</p>
+                ${action}
               </div>
             `;
       }).join('')}
@@ -80,8 +138,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  // Quick check-in to a specific session
-  window.quickCheckIn = async function (sessionId, className) {
+  // Quick check-in to a scheduled class
+  window.quickCheckIn = async function (classId, className) {
     const token = localStorage.getItem('token');
 
     try {
@@ -92,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          sessionId,
+          classId,
           subject: className,
           notes: 'Checked in via Student Dashboard'
         })
@@ -151,16 +209,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const time = new Date(record.timeIn).toLocaleTimeString();
 
         let badgeColor = 'bg-secondary';
+        if (record.status === 'Present') badgeColor = 'bg-success';
         if (record.status === 'Early') badgeColor = 'bg-success';
         if (record.status === 'On-Time') badgeColor = 'bg-primary';
         if (record.status === 'Late') badgeColor = 'bg-warning text-dark';
         if (record.status === 'Absent') badgeColor = 'bg-danger';
+        if (record.status === 'Excused') badgeColor = 'bg-info text-dark';
 
         return `
           <tr>
             <td>${date}</td>
             <td>${time}</td>
-            <td><span class="badge ${badgeColor}">${record.status}</span></td>
+            <td><span class="badge ${badgeColor}">${record.status}</span>${record.arrivalType && record.arrivalType !== 'None' ? `<div class="small text-muted">${record.arrivalType}</div>` : ''}</td>
             <td>${record.subject || 'General'}</td>
           </tr>
         `;
