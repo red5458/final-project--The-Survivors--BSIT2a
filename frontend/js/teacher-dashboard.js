@@ -1,3 +1,8 @@
+// DYNAMIC API URL SETUP
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? '/api'
+  : 'https://final-project-the-survivors-bsit2a-6cdr.onrender.com/api';
+
 document.addEventListener('DOMContentLoaded', function () {
   const token = localStorage.getItem('token');
   const user = localStorage.getItem('currentUser');
@@ -30,10 +35,145 @@ document.addEventListener('DOMContentLoaded', function () {
     evt.currentTarget.classList.add('active');
     document.getElementById(tabName + 'Tab').classList.add('active');
 
-    if (tabName === 'schedule') {
-      loadSchedule();
+    if (tabName === 'schedule') loadSchedule();
+    if (tabName === 'sessions') loadActiveSessions();
+    if (tabName === 'records') loadAttendance();
+  };
+
+  // ── Session Management (NEW) ────────────────────────────────
+
+  // Pre-fill today's date in the session form
+  const dateInput = document.getElementById('sessionDate');
+  if (dateInput) {
+    dateInput.value = new Date().toISOString().split('T')[0];
+  }
+
+  async function loadActiveSessions() {
+    const grid = document.getElementById('activeSessionsGrid');
+    if (!grid) return;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const response = await fetch(`${API_URL}/sessions?startDate=${today}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.data || data.data.length === 0) {
+        grid.innerHTML = '<p class="text-muted text-center p-3">No active sessions right now.</p>';
+        return;
+      }
+
+      const openSessions = data.data.filter(s => s.status === 'open');
+
+      if (openSessions.length === 0) {
+        grid.innerHTML = '<p class="text-muted text-center p-3">No active sessions right now.</p>';
+        return;
+      }
+
+      grid.innerHTML = openSessions.map(session => {
+        const date = new Date(session.sessionDate).toLocaleDateString();
+        const time = `${session.startTime} - ${session.endTime}`;
+        return `
+          <div class="session-card p-3 border rounded bg-light d-flex justify-content-between align-items-center">
+            <div>
+              <h4 class="mb-1 text-primary">${session.className}</h4>
+              <p class="mb-0 text-secondary">
+                <i class="fas fa-calendar-alt me-1"></i> ${date} | 
+                <i class="fas fa-clock me-1"></i> ${time}
+              </p>
+            </div>
+            <button class="btn btn-danger" onclick="closeSession('${session._id}', '${session.className}')">
+              <i class="fas fa-stop-circle me-1"></i> Close Session
+            </button>
+          </div>
+        `;
+      }).join('');
+    } catch (error) {
+      console.error('Error loading sessions:', error);
+      grid.innerHTML = '<p class="text-danger text-center">Failed to load active sessions.</p>';
+    }
+  }
+
+  const startSessionForm = document.getElementById('startSessionForm');
+  if (startSessionForm) {
+    startSessionForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const submitBtn = startSessionForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = 'Opening...';
+      submitBtn.disabled = true;
+
+      const payload = {
+        className: document.getElementById('sessionClassName').value,
+        sessionDate: document.getElementById('sessionDate').value,
+        startTime: document.getElementById('sessionStartTime').value,
+        endTime: document.getElementById('sessionEndTime').value,
+        allowanceMinutes: parseInt(document.getElementById('sessionAllowance').value) || 5
+      };
+
+      try {
+        const response = await fetch(`${API_URL}/sessions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          alert('✅ Session Opened Successfully! Students can now check in.');
+          startSessionForm.reset();
+          document.getElementById('sessionDate').value = new Date().toISOString().split('T')[0]; // reset date
+          loadActiveSessions();
+        } else {
+          alert(`❌ Failed: ${data.message}`);
+        }
+      } catch (error) {
+        console.error('Error starting session:', error);
+        alert('❌ Cannot connect to server.');
+      } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  window.closeSession = async function (sessionId, className) {
+    if (!confirm(`Are you sure you want to close "${className}"?\n\nAny student enrolled in the roster who has not checked in will be automatically marked as ABSENT.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/sessions/${sessionId}/close`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(`✅ Session Closed.\n${data.absencesCreated || 0} students were automatically marked as Absent.`);
+        loadActiveSessions();
+        loadAttendance(); // Refresh records to show new absentees
+        loadStats();      // Refresh stats
+      } else {
+        alert(`❌ Failed to close session: ${data.message}`);
+      }
+    } catch (error) {
+      console.error('Error closing session:', error);
+      alert('❌ Cannot connect to server.');
     }
   };
+
 
   // ── Attendance Records ──────────────────────────────────────
 
@@ -44,7 +184,7 @@ document.addEventListener('DOMContentLoaded', function () {
     tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Loading...</td></tr>';
 
     try {
-      const response = await fetch('/api/attendance', {
+      const response = await fetch(`${API_URL}/attendance`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -62,15 +202,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
       tableBody.innerHTML = data.data.map(record => {
         const date = new Date(record.timeIn).toLocaleDateString();
-        const time = new Date(record.timeIn).toLocaleTimeString();
-        const statusClass = {
-          'Early': 'badge-success',
-          'On-Time': 'badge-primary',
-          'Late': 'badge-warning',
-          'Absent': 'badge-danger'
-        }[record.status] || 'badge-secondary';
+        // Handle automatically generated absences which might not have a useful timeIn
+        const time = record.markedByAdmin && record.status === 'Absent' ? '--:--' : new Date(record.timeIn).toLocaleTimeString();
+
+        let statusClass = 'badge-secondary';
+        if (record.status === 'Early') statusClass = 'bg-success';
+        if (record.status === 'On-Time') statusClass = 'bg-primary';
+        if (record.status === 'Late') statusClass = 'bg-warning text-dark';
+        if (record.status === 'Absent') statusClass = 'bg-danger';
 
         const studentName = record.user?.username || record.studentId || 'Unknown';
+        const autoTag = record.markedByAdmin ? ' <small class="text-white-50">(Auto)</small>' : '';
 
         return `
           <tr>
@@ -78,7 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <td>${record.studentId || 'N/A'}</td>
             <td>${date}</td>
             <td>${time}</td>
-            <td><span class="badge ${statusClass}">${record.status}</span></td>
+            <td><span class="badge ${statusClass}">${record.status}${autoTag}</span></td>
             <td>
               <button class="btn btn-sm btn-info" onclick="viewDetails('${record._id}')">View</button>
             </td>
@@ -96,18 +238,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function loadStats() {
     try {
-      const response = await fetch('/api/attendance/stats', {
+      const response = await fetch(`${API_URL}/attendance/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       const data = await response.json();
       if (!data.data) return;
 
-      document.getElementById('statEarly').textContent = data.data.today.Early;
-      document.getElementById('statOnTime').textContent = data.data.today['On-Time'];
-      document.getElementById('statLate').textContent = data.data.today.Late;
-      document.getElementById('statAbsent').textContent = data.data.today.Absent;
-      document.getElementById('statTotal').textContent = data.data.total;
+      document.getElementById('statEarly').textContent = data.data.today.Early || 0;
+      document.getElementById('statOnTime').textContent = data.data.today['On-Time'] || 0;
+      document.getElementById('statLate').textContent = data.data.today.Late || 0;
+      document.getElementById('statAbsent').textContent = data.data.today.Absent || 0;
+      document.getElementById('statTotal').textContent = data.data.total || 0;
 
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -120,53 +262,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const grid = document.getElementById('studentSummaryGrid');
     if (!grid) return;
 
-    grid.innerHTML = '<div class="text-center loading" style="grid-column: 1/-1;">Loading student activity data...</div>';
-
     try {
-      const response = await fetch('/api/attendance/student-summary', {
+      const response = await fetch(`${API_URL}/attendance/student-summary`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       const result = await response.json();
 
       if (!response.ok || !result.data || result.data.length === 0) {
-        grid.innerHTML = '<div class="text-center" style="grid-column: 1/-1; padding: 2rem;">No student activity data available yet</div>';
+        grid.innerHTML = '<div class="text-center w-100 p-3">No student activity data available.</div>';
         return;
       }
-
-      const students = result.data;
-      renderStudentCards(students);
-
-      const studentSearchInput = document.getElementById('studentSearchInput');
-      if (studentSearchInput) {
-        studentSearchInput.addEventListener('input', function () {
-          const term = this.value.toLowerCase();
-          const filtered = students.filter(s =>
-            s.studentName.toLowerCase().includes(term) ||
-            s.studentId.toLowerCase().includes(term)
-          );
-          renderStudentCards(filtered);
-        });
-      }
-
-      const sortFilter = document.getElementById('sortFilter');
-      if (sortFilter) {
-        sortFilter.addEventListener('change', function () {
-          const sortBy = this.value;
-          let sorted = [...students];
-          switch (sortBy) {
-            case 'name': sorted.sort((a, b) => a.studentName.localeCompare(b.studentName)); break;
-            case 'absent': sorted.sort((a, b) => b.Absent - a.Absent); break;
-            case 'late': sorted.sort((a, b) => b.Late - a.Late); break;
-            case 'early': sorted.sort((a, b) => b.Early - a.Early); break;
-          }
-          renderStudentCards(sorted);
-        });
-      }
-
+      renderStudentCards(result.data);
     } catch (error) {
-      console.error('Error loading student summary:', error);
-      grid.innerHTML = '<div class="text-center text-danger" style="grid-column: 1/-1; padding: 2rem;">Failed to load student activity data</div>';
+      grid.innerHTML = '<div class="text-center text-danger w-100 p-3">Failed to load student data.</div>';
     }
   }
 
@@ -174,131 +282,39 @@ document.addEventListener('DOMContentLoaded', function () {
     const grid = document.getElementById('studentSummaryGrid');
     if (!grid) return;
 
-    if (students.length === 0) {
-      grid.innerHTML = '<div class="text-center" style="grid-column: 1/-1; padding: 2rem;">No students found</div>';
-      return;
-    }
-
+    // Using the same rendering logic you previously had
     grid.innerHTML = students.map(student => {
       const total = student.total || 1;
-      const earlyPct = student.percentages?.Early?.toFixed(1) || ((student.Early / total) * 100).toFixed(1);
-      const ontimePct = student.percentages?.['On-Time']?.toFixed(1) || ((student['On-Time'] / total) * 100).toFixed(1);
-      const latePct = student.percentages?.Late?.toFixed(1) || ((student.Late / total) * 100).toFixed(1);
-      const absentPct = student.percentages?.Absent?.toFixed(1) || ((student.Absent / total) * 100).toFixed(1);
-
-      let statusMsg = '';
-      if (student.Absent === 0 && student.Late === 0) statusMsg = ' ⭐ Perfect Attendance!';
-      else if (student.Absent >= 5) statusMsg = ' ⚠️ High Absence Rate';
-      else if (student.Late >= 5) statusMsg = ' 🕐 Frequently Late';
+      const earlyPct = ((student.Early / total) * 100).toFixed(1);
+      const absentPct = ((student.Absent / total) * 100).toFixed(1);
 
       return `
-        <div class="student-card">
+        <div class="student-card p-3 border rounded mb-2">
           <h4>${student.studentName}</h4>
-          <div class="student-id">ID: ${student.studentId}</div>
-          <div class="mini-stats">
-            <span class="mini-stat early">Early: ${student.Early}</span>
-            <span class="mini-stat ontime">On-Time: ${student['On-Time']}</span>
-            <span class="mini-stat late">Late: ${student.Late}</span>
-            <span class="mini-stat absent">Absent: ${student.Absent}</span>
-          </div>
-          <div style="margin-top: 0.75rem; font-size: 0.8rem; color: #7f8c8d;">
-            📊 Total Records: ${student.total}${statusMsg}
-          </div>
-          <div style="margin-top: 0.5rem;">
-            <div style="display: flex; gap: 0.25rem; margin-bottom: 0.25rem;">
-              <div class="progress-bar" style="flex: ${student.Early};"><div class="progress-fill early" style="width: 100%;"></div></div>
-              <div class="progress-bar" style="flex: ${student['On-Time']};"><div class="progress-fill ontime" style="width: 100%;"></div></div>
-              <div class="progress-bar" style="flex: ${student.Late};"><div class="progress-fill late" style="width: 100%;"></div></div>
-              <div class="progress-bar" style="flex: ${student.Absent};"><div class="progress-fill absent" style="width: 100%;"></div></div>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #95a5a6;">
-              <span>${earlyPct}% Early</span>
-              <span>${ontimePct}% On-Time</span>
-              <span>${latePct}% Late</span>
-              <span>${absentPct}% Absent</span>
-            </div>
+          <div class="text-muted">ID: ${student.studentId}</div>
+          <div class="mt-2">
+            <span class="badge bg-success">Early: ${student.Early}</span>
+            <span class="badge bg-primary">On-Time: ${student['On-Time']}</span>
+            <span class="badge bg-warning text-dark">Late: ${student.Late}</span>
+            <span class="badge bg-danger">Absent: ${student.Absent}</span>
           </div>
         </div>
       `;
     }).join('');
   }
 
-  // ── Class Schedule ──────────────────────────────────────────
-
-  function formatTime(hhmm) {
-    if (!hhmm) return '--:--';
-    const [h, m] = hhmm.split(':').map(Number);
-    const period = h >= 12 ? 'PM' : 'AM';
-    const hour = h % 12 || 12;
-    return `${hour}:${String(m).padStart(2, '0')} ${period}`;
-  }
-
-  function addMinutes(hhmm, mins) {
-    if (!hhmm) return '--:--';
-    const [h, m] = hhmm.split(':').map(Number);
-    const total = h * 60 + m + mins;
-    const newH = Math.floor(total / 60) % 24;
-    const newM = total % 60;
-    return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
-  }
-
-  function updatePreview() {
-    const startTime = document.getElementById('startTime').value;
-    const allowance = parseInt(document.getElementById('allowanceTime').value) || 5;
-    if (!startTime) return;
-
-    const onTimeEnd = addMinutes(startTime, allowance);
-    const absentStart = addMinutes(startTime, 60);
-
-    document.getElementById('previewEarly').textContent = `Before ${formatTime(startTime)}`;
-    document.getElementById('previewOnTime').textContent = `${formatTime(startTime)} – ${formatTime(onTimeEnd)}`;
-    document.getElementById('previewLate').textContent = `${formatTime(onTimeEnd)} – ${formatTime(absentStart)}`;
-    document.getElementById('previewAbsent').textContent = `After ${formatTime(absentStart)}`;
-  }
-
-  document.getElementById('startTime')?.addEventListener('input', updatePreview);
-  document.getElementById('endTime')?.addEventListener('input', updatePreview);
-  document.getElementById('allowanceTime')?.addEventListener('input', updatePreview);
-
+  // ── Legacy Class Schedule ───────────────────────────────────
   async function loadSchedule() {
     try {
-      const response = await fetch('/api/schedule', {
+      const response = await fetch(`${API_URL}/schedule`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-
       if (data.data) {
-        const s = data.data;
-        document.getElementById('className').value = s.className || '';
-        document.getElementById('startTime').value = s.startTime || '';
-        document.getElementById('endTime').value = s.endTime || '';
-        document.getElementById('allowanceTime').value = s.allowanceMinutes ?? 5;
-
-        const onTimeEnd = addMinutes(s.startTime, s.allowanceMinutes ?? 5);
-        const absentStart = addMinutes(s.startTime, 60);
-
-        const banner = document.getElementById('currentScheduleBanner');
-        banner.style.display = 'block';
-        document.getElementById('scheduleInfo').innerHTML = `
-          <div class="stat-card">
-            <h3>Class</h3>
-            <div class="number" style="font-size: 1.1rem;">${s.className}</div>
-          </div>
-          <div class="stat-card ontime">
-            <h3>Start Time</h3>
-            <div class="number" style="font-size: 1.1rem;">${formatTime(s.startTime)}</div>
-          </div>
-          <div class="stat-card late">
-            <h3>End Time</h3>
-            <div class="number" style="font-size: 1.1rem;">${formatTime(s.endTime)}</div>
-          </div>
-          <div class="stat-card absent">
-            <h3>On-Time Until</h3>
-            <div class="number" style="font-size: 1.1rem;">${formatTime(onTimeEnd)}</div>
-          </div>
-        `;
-
-        updatePreview();
+        document.getElementById('className').value = data.data.className || '';
+        document.getElementById('startTime').value = data.data.startTime || '';
+        document.getElementById('endTime').value = data.data.endTime || '';
+        document.getElementById('allowanceTime').value = data.data.allowanceMinutes ?? 5;
       }
     } catch (error) {
       console.error('Error loading schedule:', error);
@@ -307,97 +323,43 @@ document.addEventListener('DOMContentLoaded', function () {
 
   document.getElementById('scheduleForm')?.addEventListener('submit', async function (e) {
     e.preventDefault();
-
-    const className = document.getElementById('className').value.trim();
-    const startTime = document.getElementById('startTime').value;
-    const endTime = document.getElementById('endTime').value;
-    const allowanceMinutes = parseInt(document.getElementById('allowanceTime').value);
-
-    const submitBtn = this.querySelector('button[type="submit"]');
-    submitBtn.textContent = 'Saving...';
-    submitBtn.disabled = true;
+    const payload = {
+      className: document.getElementById('className').value,
+      startTime: document.getElementById('startTime').value,
+      endTime: document.getElementById('endTime').value,
+      allowanceMinutes: parseInt(document.getElementById('allowanceTime').value)
+    };
 
     try {
-      const response = await fetch('/api/schedule', {
+      const response = await fetch(`${API_URL}/schedule`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ className, startTime, endTime, allowanceMinutes })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert('✅ Class schedule saved! Attendance classification will now use these settings.');
-        loadSchedule();
-      } else {
-        alert(data.message || 'Failed to save schedule');
-      }
-    } catch (error) {
-      console.error('Error:', error);
+      if (response.ok) alert('✅ Legacy schedule saved.');
+    } catch (err) {
       alert('❌ Cannot connect to server.');
-    } finally {
-      submitBtn.textContent = '💾 Save Schedule';
-      submitBtn.disabled = false;
     }
   });
 
-  // ── Search & Filter ─────────────────────────────────────────
-
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput) {
-    searchInput.addEventListener('input', function () {
-      const term = this.value.toLowerCase();
-      document.querySelectorAll('#attendanceTableBody tr').forEach(row => {
-        row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
-      });
-    });
-  }
-
-  const statusFilter = document.getElementById('statusFilter');
-  if (statusFilter) {
-    statusFilter.addEventListener('change', function () {
-      const status = this.value;
-      document.querySelectorAll('#attendanceTableBody tr').forEach(row => {
-        row.style.display = (!status || row.textContent.includes(status)) ? '' : 'none';
-      });
-    });
-  }
-
   // ── View Details ────────────────────────────────────────────
-
   window.viewDetails = async function (id) {
     try {
-      const response = await fetch(`/api/attendance/${id}`, {
+      const response = await fetch(`${API_URL}/attendance/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       const data = await response.json();
-      if (!response.ok) {
-        alert(data.message || 'Failed to load details');
-        return;
+      if (response.ok) {
+        const record = data.data;
+        alert(`Student: ${record.user?.username || record.studentId}\nStatus: ${record.status}\nSubject: ${record.subject || 'General'}\nNotes: ${record.notes || 'None'}`);
       }
-
-      const record = data.data;
-      alert(`
-        Student: ${record.user?.username || record.studentId}
-        ID: ${record.studentId}
-        Date: ${new Date(record.timeIn).toLocaleString()}
-        Status: ${record.status}
-        Subject: ${record.subject || 'General'}
-        Notes: ${record.notes || 'None'}
-      `);
-
     } catch (error) {
-      console.error('Error:', error);
       alert('Failed to load details');
     }
   };
 
   // ── Init ────────────────────────────────────────────────────
-
+  loadActiveSessions();
   loadAttendance();
   loadStats();
   loadStudentSummary();

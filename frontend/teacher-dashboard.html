@@ -7,12 +7,13 @@
     <title>Teacher Dashboard - Smart Attendance</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
 <body>
     <nav class="navbar">
         <div class="d-flex align-items-center">
-            <i class="fas fa-chart-line me-2"></i>
+            <i class="fas fa-chalkboard-teacher me-2"></i>
             <h1>📊 Smart Attendance - Teacher Dashboard</h1>
         </div>
         <div class="user-info">
@@ -33,9 +34,8 @@
         </div>
     </nav>
 
-    <div class="container">
-        <!-- Daily Stats Section -->
-        <div class="stats-grid">
+    <div class="container mt-4">
+        <div class="stats-grid mb-4">
             <div class="stat-card early">
                 <h3>Early Today</h3>
                 <div class="number" id="statEarly">0</div>
@@ -58,15 +58,57 @@
             </div>
         </div>
 
-        <!-- Tabs -->
         <div class="tabs">
-            <div class="tab active" onclick="switchTab(event, 'records')">📋 All Attendance Records</div>
-            <div class="tab" onclick="switchTab(event, 'students')">👥 Student Activity Summary</div>
-            <div class="tab" onclick="switchTab(event, 'schedule')">⚙️ Class Settings</div>
+            <div class="tab active" onclick="switchTab(event, 'sessions')">🏫 Live Sessions</div>
+            <div class="tab" onclick="switchTab(event, 'records')">📋 All Records</div>
+            <div class="tab" onclick="switchTab(event, 'students')">👥 Student Summary</div>
+            <div class="tab" onclick="switchTab(event, 'schedule')">⚙️ Legacy Settings</div>
         </div>
 
-        <!-- Attendance Records Tab -->
-        <div id="recordsTab" class="tab-content active">
+        <div id="sessionsTab" class="tab-content active">
+            <div class="card mb-4">
+                <h2>▶️ Start a New Class Session</h2>
+                <p class="text-muted">Open a session to allow students to check in right now.</p>
+                <form id="startSessionForm" class="row g-3 mt-2">
+                    <div class="col-md-6">
+                        <label class="form-label">Class Name</label>
+                        <input type="text" id="sessionClassName" class="form-control"
+                            placeholder="e.g. IT 112 - Web Systems" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Date</label>
+                        <input type="date" id="sessionDate" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Start Time</label>
+                        <input type="time" id="sessionStartTime" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">End Time</label>
+                        <input type="time" id="sessionEndTime" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Grace Period (mins)</label>
+                        <input type="number" id="sessionAllowance" class="form-control" value="5" min="0" required>
+                    </div>
+                    <div class="col-12 mt-4">
+                        <button type="submit" class="btn btn-success"><i class="fas fa-play me-2"></i>Open Class
+                            Session</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>🔴 Active Sessions</h2>
+                <p class="text-muted">Classes that are currently open for check-ins. Close them when class is over to
+                    mark absences.</p>
+                <div id="activeSessionsGrid" class="d-flex flex-column gap-3 mt-3">
+                    <p class="text-center loading">Loading active sessions...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="recordsTab" class="tab-content">
             <div class="card">
                 <h2>📋 All Attendance Records</h2>
                 <div class="filters">
@@ -79,7 +121,7 @@
                         <option value="Absent">Absent</option>
                     </select>
                 </div>
-                <table>
+                <table class="table mt-3">
                     <thead>
                         <tr>
                             <th>Student Name</th>
@@ -99,7 +141,6 @@
             </div>
         </div>
 
-        <!-- Student Activity Summary Tab -->
         <div id="studentsTab" class="tab-content">
             <div class="card">
                 <h2>👥 Student Activity Summary</h2>
@@ -114,92 +155,44 @@
                         <option value="early">Sort by Most Early</option>
                     </select>
                 </div>
-                <div id="studentSummaryGrid" class="student-summary-grid">
+                <div id="studentSummaryGrid" class="student-summary-grid mt-3">
                     <div class="text-center loading" style="grid-column: 1/-1;">Loading student activity data...</div>
                 </div>
             </div>
         </div>
 
-        <!-- Class Settings Tab -->
         <div id="scheduleTab" class="tab-content">
-
-            <!-- Current Active Schedule Banner -->
-            <div id="currentScheduleBanner" style="display: none;" class="card">
-                <h2>📌 Current Active Schedule</h2>
-                <div id="scheduleInfo" class="stats-grid" style="margin-bottom: 0;"></div>
-            </div>
-
-            <!-- Settings Form -->
             <div class="card">
-                <h2>📅 Set Class Schedule</h2>
+                <h2>📅 Legacy Schedule Settings</h2>
                 <p class="text-muted" style="margin-bottom: 1.5rem;">
-                    This schedule determines how student attendance is automatically classified.
+                    (Used for the old Quick Check-In. We recommend using the "Live Sessions" tab instead).
                 </p>
-
                 <form id="scheduleForm">
                     <div class="form-group">
                         <label for="className">Subject / Class Name</label>
                         <input type="text" id="className" placeholder="e.g. Mathematics - Grade 10" required>
                     </div>
-
                     <div class="form-group">
                         <label for="startTime">Class Start Time</label>
                         <input type="time" id="startTime" required>
-                        <small class="text-muted">The official time the class begins.</small>
                     </div>
-
                     <div class="form-group">
                         <label for="endTime">Class End Time</label>
                         <input type="time" id="endTime" required>
-                        <small class="text-muted">The official time the class ends.</small>
                     </div>
-
                     <div class="form-group">
                         <label for="allowanceTime">Late Allowance (Minutes)</label>
                         <input type="number" id="allowanceTime" min="0" max="30" value="5" required>
-                        <small class="text-muted">
-                            Minutes after start time still considered "On-Time". Students arriving after this are marked
-                            Late. After 60 minutes from start, they are marked Absent.
-                        </small>
                     </div>
-
                     <div style="margin-top: 1.5rem;">
                         <button type="submit" class="btn btn-primary">💾 Save Schedule</button>
                     </div>
                 </form>
             </div>
-
-            <!-- Classification Preview -->
-            <div class="card">
-                <h2>📊 Classification Preview</h2>
-                <p class="text-muted" style="margin-bottom: 1rem;">
-                    Based on your settings, here is how attendance will be classified:
-                </p>
-                <div class="stats-grid">
-                    <div class="stat-card early">
-                        <h3>🟢 Early</h3>
-                        <div class="number" style="font-size: 1rem;" id="previewEarly">Before --:--</div>
-                    </div>
-                    <div class="stat-card ontime">
-                        <h3>🔵 On-Time</h3>
-                        <div class="number" style="font-size: 1rem;" id="previewOnTime">--:-- to --:--</div>
-                    </div>
-                    <div class="stat-card late">
-                        <h3>🟡 Late</h3>
-                        <div class="number" style="font-size: 1rem;" id="previewLate">--:-- to --:--</div>
-                    </div>
-                    <div class="stat-card absent">
-                        <h3>🔴 Absent</h3>
-                        <div class="number" style="font-size: 1rem;" id="previewAbsent">After --:--</div>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/auth.js"></script>
     <script src="js/teacher-dashboard.js"></script>
 </body>
 
