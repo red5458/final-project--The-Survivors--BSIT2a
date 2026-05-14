@@ -1,18 +1,32 @@
-const API_URL = '/api';
+// frontend/js/login.js
 
-document.addEventListener('DOMContentLoaded', function() {
+// DYNAMIC API URL SETUP:
+// If your frontend and backend are hosted separately on Render, replace the production URL
+// with your actual Render backend link (e.g., 'https://the-survivors-backend.onrender.com/api')
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? '/api'
+  : '/api'; // <-- CHANGE THIS TO YOUR RENDER BACKEND URL IF HOSTED SEPARATELY
+
+document.addEventListener('DOMContentLoaded', function () {
   const token = localStorage.getItem('token');
   const user = localStorage.getItem('currentUser');
+
   if (token && user) {
-    const userData = JSON.parse(user);
-    if (userData.role === 'student') {
-      window.location.href = 'student-dashboard.html';
-    } else if (userData.role === 'teacher') {
-      window.location.href = 'teacher-dashboard.html';
-    } else if (userData.role === 'admin') {
-      window.location.href = 'admin-dashboard.html';
+    try {
+      const userData = JSON.parse(user);
+      if (userData.role === 'student') {
+        window.location.href = 'student-dashboard.html';
+      } else if (userData.role === 'teacher') {
+        window.location.href = 'teacher-dashboard.html';
+      } else if (userData.role === 'admin') {
+        window.location.href = 'admin-dashboard.html';
+      }
+      return;
+    } catch (err) {
+      console.error('Error parsing user data, clearing storage');
+      localStorage.removeItem('token');
+      localStorage.removeItem('currentUser');
     }
-    return;
   }
 
   const form = document.getElementById('loginForm');
@@ -22,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
-  form.addEventListener('submit', async function(e) {
+  form.addEventListener('submit', async function (e) {
     e.preventDefault();
 
     const email = document.getElementById('loginEmail').value.trim();
@@ -39,25 +53,35 @@ document.addEventListener('DOMContentLoaded', function() {
     submitBtn.disabled = true;
 
     try {
-      console.log('Attempting login...', { email });
+      console.log('Attempting login...', { email, targetUrl: `${API_URL}/auth/login` });
 
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({ email, password })
       });
 
-      const data = await response.json();
-      console.log('Login response:', data);
+      // Safely attempt to parse JSON in case the server returns an HTML error page
+      let data;
+      try {
+        data = await response.json();
+        console.log('Login response:', data);
+      } catch (parseError) {
+        console.error('Failed to parse response as JSON. Check if your backend URL is correct.', parseError);
+        alert('Server error: Did not receive valid JSON. Check the console for details.');
+        return;
+      }
 
       if (!response.ok) {
         if (data.errors && Array.isArray(data.errors)) {
           const errorMessages = data.errors.map(err => `${err.field}: ${err.message}`).join('\n');
           alert(`Validation Errors:\n${errorMessages}`);
         } else {
-          alert(`Error: ${data.message || 'Login failed'}`);
+          // Exposing the exact error message (e.g., "Wrong password" or "User not found")
+          alert(`Error (${response.status}): ${data.message || 'Login failed'}`);
         }
         return;
       }
@@ -79,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     } catch (error) {
       console.error('Login error:', error);
-      alert('❌ Cannot connect to server. Make sure backend is running.');
+      alert('❌ Cannot connect to server. Check your internet connection or ensure the backend URL is properly configured.');
     } finally {
       submitBtn.textContent = originalText;
       submitBtn.disabled = false;
