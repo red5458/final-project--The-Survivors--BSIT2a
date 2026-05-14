@@ -1,5 +1,8 @@
 const API_CONFIG = {
-  BASE_URL: 'http://localhost:3000/api',
+  // Automatically detect the API URL based on environment
+  BASE_URL: window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000/api'
+    : `${window.location.protocol}//${window.location.hostname}:${window.location.port || 443}/api`,
 
   async apiCall(endpoint, method = 'GET', body = null, token = null) {
     const url = `${this.BASE_URL}${endpoint}`;
