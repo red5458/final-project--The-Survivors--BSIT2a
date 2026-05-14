@@ -8,7 +8,7 @@ const classifyTime = (time) => {
 
   if (hour < 8) return 'Early';
   if (hour === 8 && minute <= 30) return 'On-Time';
-  if (hour === 8 && minute > 30 || hour === 9) return 'Late';
+  if ((hour === 8 && minute > 30) || hour === 9) return 'Late';
   return 'Absent';
 };
 
@@ -24,8 +24,11 @@ exports.checkIn = async (req, res) => {
     const now = new Date();
     const status = classifyTime(now);
 
+    // FIX: was `studentId` (undefined variable). Use student.studentId instead.
+    const studentIdValue = student.studentId || student._id.toString();
+
     const record = new Attendance({
-      studentId: student.studentId || student._id.toString(),
+      studentId: studentIdValue,
       user: student._id,
       timeIn: now,
       status,
@@ -36,7 +39,7 @@ exports.checkIn = async (req, res) => {
     await record.save();
 
     cache.del('attendance_all');
-    cache.del(`attendance_student_${studentId}`);
+    cache.del(`attendance_student_${studentIdValue}`);
     cache.del('attendance_student_summary');
 
     res.status(201).json({
@@ -156,29 +159,12 @@ exports.getStats = async (req, res) => {
     today.setHours(0, 0, 0, 0);
 
     const stats = await Attendance.aggregate([
-      {
-        $match: {
-          timeIn: { $gte: today }
-        }
-      },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
-      }
+      { $match: { timeIn: { $gte: today } } },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
     ]);
 
-    const statusCounts = {
-      Early: 0,
-      'On-Time': 0,
-      Late: 0,
-      Absent: 0
-    };
-
-    stats.forEach(stat => {
-      statusCounts[stat._id] = stat.count;
-    });
+    const statusCounts = { Early: 0, 'On-Time': 0, Late: 0, Absent: 0 };
+    stats.forEach(stat => { statusCounts[stat._id] = stat.count; });
 
     const total = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
@@ -200,54 +186,31 @@ exports.getStats = async (req, res) => {
   }
 };
 
-// NEW: Get student summary - groups attendance by student with status counts
 exports.getStudentSummary = async (req, res) => {
   try {
     const cacheKey = 'attendance_student_summary';
     const cachedData = cache.get(cacheKey);
 
     if (cachedData) {
-      return res.json({
-        success: true,
-        source: 'cache',
-        count: cachedData.length,
-        data: cachedData
-      });
+      return res.json({ success: true, source: 'cache', count: cachedData.length, data: cachedData });
     }
 
-    // Use MongoDB aggregation to group by student and count statuses
     const summary = await Attendance.aggregate([
       {
-        $lookup: {
-          from: 'users',
-          localField: 'user',
-          foreignField: '_id',
-          as: 'userInfo'
-        }
+        $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'userInfo' }
       },
       {
-        $unwind: {
-          path: '$userInfo',
-          preserveNullAndEmptyArrays: true
-        }
+        $unwind: { path: '$userInfo', preserveNullAndEmptyArrays: true }
       },
       {
         $group: {
           _id: '$studentId',
           studentName: { $first: { $ifNull: ['$userInfo.username', '$studentId'] } },
           email: { $first: { $ifNull: ['$userInfo.email', 'N/A'] } },
-          Early: {
-            $sum: { $cond: [{ $eq: ['$status', 'Early'] }, 1, 0] }
-          },
-          'On-Time': {
-            $sum: { $cond: [{ $eq: ['$status', 'On-Time'] }, 1, 0] }
-          },
-          Late: {
-            $sum: { $cond: [{ $eq: ['$status', 'Late'] }, 1, 0] }
-          },
-          Absent: {
-            $sum: { $cond: [{ $eq: ['$status', 'Absent'] }, 1, 0] }
-          },
+          Early: { $sum: { $cond: [{ $eq: ['$status', 'Early'] }, 1, 0] } },
+          'On-Time': { $sum: { $cond: [{ $eq: ['$status', 'On-Time'] }, 1, 0] } },
+          Late: { $sum: { $cond: [{ $eq: ['$status', 'Late'] }, 1, 0] } },
+          Absent: { $sum: { $cond: [{ $eq: ['$status', 'Absent'] }, 1, 0] } },
           total: { $sum: 1 }
         }
       },
@@ -270,19 +233,12 @@ exports.getStudentSummary = async (req, res) => {
           }
         }
       },
-      {
-        $sort: { studentName: 1 }
-      }
+      { $sort: { studentName: 1 } }
     ]);
 
     cache.set(cacheKey, summary);
 
-    res.json({
-      success: true,
-      source: 'database',
-      count: summary.length,
-      data: summary
-    });
+    res.json({ success: true, source: 'database', count: summary.length, data: summary });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -305,11 +261,7 @@ exports.update = async (req, res) => {
     cache.del(`attendance_student_${updated.studentId}`);
     cache.del('attendance_student_summary');
 
-    res.json({
-      success: true,
-      message: 'Updated successfully',
-      data: updated
-    });
+    res.json({ success: true, message: 'Updated successfully', data: updated });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -328,10 +280,7 @@ exports.deleteAttendance = async (req, res) => {
     cache.del(`attendance_student_${record.studentId}`);
     cache.del('attendance_student_summary');
 
-    res.json({
-      success: true,
-      message: 'Deleted successfully'
-    });
+    res.json({ success: true, message: 'Deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

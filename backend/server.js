@@ -12,20 +12,25 @@ const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
-
 connectDB();
 
-app.use(helmet());
-app.use(xss());
-app.use(mongoSanitize());  
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
+app.use(helmet({
+  contentSecurityPolicy: false // Allow inline scripts in frontend HTML
 }));
+app.use(xss());
+app.use(mongoSanitize());
+
+// FIX: Allow requests from any origin so the browser-served frontend can reach the API
+app.use(cors({
+  origin: '*',
+  credentials: false
+}));
+
 app.use(express.json());
 
 const loginLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000,  
+  windowMs: 1 * 60 * 1000,
+  max: 20, // Relaxed for development; tighten in production
   message: {
     success: false,
     message: 'Too many login attempts, please try again after 1 minute'
@@ -35,8 +40,8 @@ const loginLimiter = rateLimit({
 });
 
 const registerLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 3,
+  windowMs: 15 * 60 * 1000,
+  max: 20, // Relaxed for development
   message: {
     success: false,
     message: 'Too many registration attempts, please try again after 15 minutes'
@@ -60,10 +65,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Serve frontend static files
 app.use(express.static(path.join(__dirname, '../frontend')));
 
+// Catch-all: serve index.html for any non-API routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+  }
 });
 
 app.use(errorHandler);

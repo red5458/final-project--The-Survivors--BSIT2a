@@ -13,7 +13,7 @@
             min-height: 100vh;
         }
     </style>
-    <base target="_blank">
+    <!-- FIX: Removed <base target="_blank"> -->
 </head>
 
 <body>
@@ -34,11 +34,11 @@
                                 <input type="text" id="regName" class="form-control" required>
                             </div>
 
-                            <!-- ID Number (Student ID or Teacher ID) -->
+                            <!-- ID Number -->
                             <div class="mb-3">
                                 <label class="form-label fw-medium">ID Number</label>
                                 <input type="text" id="regStudentId" class="form-control"
-                                    placeholder="2020-0000-00000 to 2026-0000-00000 (Student) or TEACHER01" required>
+                                    placeholder="e.g. 2024-0001-00001 or TEACHER01" required>
                             </div>
 
                             <!-- Email -->
@@ -51,6 +51,7 @@
                             <div class="mb-3">
                                 <label class="form-label fw-medium">Password</label>
                                 <input type="password" id="regPassword" class="form-control" required>
+                                <div class="form-text">Min 6 chars, one uppercase letter, one number.</div>
                             </div>
 
                             <!-- Confirm Password -->

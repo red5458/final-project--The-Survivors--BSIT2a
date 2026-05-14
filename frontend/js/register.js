@@ -70,13 +70,8 @@ document.addEventListener('DOMContentLoaded', function() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          username,
-          email,
-          password,
-          role,
-          studentId: role === 'student' ? studentId : undefined
-        })
+        // FIX: Always send studentId (was sending undefined for teachers, causing validation errors)
+        body: JSON.stringify({ username, email, password, role, studentId })
       });
 
       const data = await response.json();
