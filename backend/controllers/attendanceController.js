@@ -8,6 +8,8 @@ const cache = require('../utils/cache');
 const {
   combineDateAndTime,
   endOfLocalDay,
+  getSchoolTimeMinutes,
+  getSchoolTimeParts,
   isSameLocalDay,
   parseTimeToMinutes,
   startOfLocalDay
@@ -25,10 +27,7 @@ const clearAttendanceCaches = (studentId, recordId) => {
 };
 
 const classifyTime = (time, schedule) => {
-  const checkInDate = new Date(time);
-  const hours = checkInDate.getHours();
-  const minutes = checkInDate.getMinutes();
-  const totalMinutes = hours * 60 + minutes;
+  const totalMinutes = getSchoolTimeMinutes(time);
 
   if (schedule && schedule.startTime) {
     const startTotal = parseTimeToMinutes(schedule.startTime);
@@ -45,9 +44,9 @@ const classifyTime = (time, schedule) => {
   }
 
   // Default fallback if no schedule is saved yet
-  if (hours < 8) return { status: 'Present', arrivalType: 'Early' };
-  if (hours === 8 && minutes <= 30) return { status: 'Present', arrivalType: 'On-Time' };
-  if ((hours === 8 && minutes > 30) || hours === 9) return { status: 'Late', arrivalType: 'Late' };
+  if (totalMinutes < 8 * 60) return { status: 'Present', arrivalType: 'Early' };
+  if (totalMinutes <= 8 * 60 + 30) return { status: 'Present', arrivalType: 'On-Time' };
+  if (totalMinutes <= 9 * 60 + 59) return { status: 'Late', arrivalType: 'Late' };
   return { status: 'Absent', arrivalType: 'None' };
 };
 
@@ -58,9 +57,10 @@ const displayClassName = (classDoc) => {
 
 const ensureTodayAbsences = async (user) => {
   const now = new Date();
+  const schoolNow = getSchoolTimeParts(now);
   const classQuery = {
     isActive: true,
-    daysOfWeek: now.getDay()
+    daysOfWeek: schoolNow.dayOfWeek
   };
 
   if (user.role === 'teacher') {
@@ -161,13 +161,15 @@ exports.checkInWithSession = async (req, res) => {
       }
 
       const now = new Date();
-      if (!classDoc.daysOfWeek.includes(now.getDay())) {
+      const schoolNow = getSchoolTimeParts(now);
+      if (!classDoc.daysOfWeek.includes(schoolNow.dayOfWeek)) {
         return res.status(400).json({ success: false, message: 'This class is not scheduled today' });
       }
 
-      const sessionStart = combineDateAndTime(now, classDoc.startTime);
-      const sessionEnd = combineDateAndTime(now, classDoc.endTime);
-      if (!sessionStart || !sessionEnd || now < sessionStart || now > sessionEnd) {
+      const nowMinutes = schoolNow.hour * 60 + schoolNow.minute;
+      const startMinutes = parseTimeToMinutes(classDoc.startTime);
+      const endMinutes = parseTimeToMinutes(classDoc.endTime);
+      if (startMinutes === null || endMinutes === null || nowMinutes < startMinutes || nowMinutes > endMinutes) {
         return res.status(400).json({ success: false, message: 'Check-in is only open during the scheduled class time' });
       }
 

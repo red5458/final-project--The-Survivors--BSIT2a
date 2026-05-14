@@ -1,4 +1,5 @@
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
+const SCHOOL_TIMEZONE = process.env.SCHOOL_TIMEZONE || 'Asia/Manila';
 
 const parseTimeToMinutes = (time) => {
   if (!TIME_PATTERN.test(time || '')) return null;
@@ -41,12 +42,51 @@ const isSameLocalDay = (first, second) => {
   return startOfLocalDay(first).getTime() === startOfLocalDay(second).getTime();
 };
 
+const getSchoolTimeParts = (date = new Date()) => {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: SCHOOL_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23'
+  });
+
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date).map(part => [part.type, part.value])
+  );
+
+  const year = Number(parts.year);
+  const month = Number(parts.month);
+  const day = Number(parts.day);
+
+  return {
+    year,
+    month,
+    day,
+    hour: Number(parts.hour),
+    minute: Number(parts.minute),
+    second: Number(parts.second),
+    dayOfWeek: new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+  };
+};
+
+const getSchoolTimeMinutes = (date = new Date()) => {
+  const parts = getSchoolTimeParts(date);
+  return parts.hour * 60 + parts.minute;
+};
+
 module.exports = {
   TIME_PATTERN,
+  SCHOOL_TIMEZONE,
   parseTimeToMinutes,
   startOfLocalDay,
   endOfLocalDay,
   combineDateAndTime,
   parseLocalDateOnly,
-  isSameLocalDay
+  isSameLocalDay,
+  getSchoolTimeParts,
+  getSchoolTimeMinutes
 };
