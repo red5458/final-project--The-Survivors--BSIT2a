@@ -65,12 +65,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.use(express.static(path.join(__dirname, '../frontend')));
+const frontendPath = path.join(__dirname, '..', 'frontend');
+app.use(express.static(frontendPath));
 
-app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
-  }
+app.get(/^\/(?!api).*/, (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 app.use(errorHandler);

@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
     tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Loading...</td></tr>';
 
     try {
-      const response = await fetch('http://localhost:3000/api/auth/users', {
+      const response = await fetch('/api/auth/users', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
     tableBody.innerHTML = '<tr><td colspan="7" class="text-center">Loading...</td></tr>';
 
     try {
-      const response = await fetch('http://localhost:3000/api/attendance', {
+      const response = await fetch('/api/attendance', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -133,10 +133,10 @@ document.addEventListener('DOMContentLoaded', function() {
   async function loadStats() {
     try {
       const [attendanceRes, usersRes] = await Promise.all([
-        fetch('http://localhost:3000/api/attendance/stats', {
+        fetch('/api/attendance/stats', {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('http://localhost:3000/api/auth/users', {
+        fetch('/api/auth/users', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!confirm('Are you sure you want to delete this user?')) return;
 
     try {
-      const response = await fetch(`http://localhost:3000/api/auth/users/${id}`, {
+      const response = await fetch(`/api/auth/users/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!confirm('Are you sure you want to delete this record?')) return;
 
     try {
-      const response = await fetch(`http://localhost:3000/api/attendance/${id}`, {
+      const response = await fetch(`/api/attendance/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -219,7 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!newStatus) return;
 
     try {
-      const response = await fetch(`http://localhost:3000/api/attendance/${id}`, {
+      const response = await fetch(`/api/attendance/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

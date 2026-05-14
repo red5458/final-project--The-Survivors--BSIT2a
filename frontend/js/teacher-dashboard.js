@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function () {
     tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Loading...</td></tr>';
 
     try {
-      const response = await fetch('http://localhost:3000/api/attendance', {
+      const response = await fetch('/api/attendance', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function loadStats() {
     try {
-      const response = await fetch('http://localhost:3000/api/attendance/stats', {
+      const response = await fetch('/api/attendance/stats', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function () {
     grid.innerHTML = '<div class="text-center loading" style="grid-column: 1/-1;">Loading student activity data...</div>';
 
     try {
-      const response = await fetch('http://localhost:3000/api/attendance/student-summary', {
+      const response = await fetch('/api/attendance/student-summary', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -262,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function loadSchedule() {
     try {
-      const response = await fetch('http://localhost:3000/api/schedule', {
+      const response = await fetch('/api/schedule', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -318,7 +318,7 @@ document.addEventListener('DOMContentLoaded', function () {
     submitBtn.disabled = true;
 
     try {
-      const response = await fetch('http://localhost:3000/api/schedule', {
+      const response = await fetch('/api/schedule', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -370,7 +370,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   window.viewDetails = async function (id) {
     try {
-      const response = await fetch(`http://localhost:3000/api/attendance/${id}`, {
+      const response = await fetch(`/api/attendance/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 

@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function() {
       submitBtn.disabled = true;
 
       try {
-        const response = await fetch('http://localhost:3000/api/attendance/checkin', {
+        const response = await fetch('/api/attendance/checkin', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
     tableBody.innerHTML = '<tr><td colspan="4" class="text-center">Loading...</td></tr>';
 
     try {
-      const response = await fetch('http://localhost:3000/api/attendance/my-attendance', {
+      const response = await fetch('/api/attendance/my-attendance', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   async function loadStats() {
     try {
-      const response = await fetch('http://localhost:3000/api/attendance/my-attendance', {
+      const response = await fetch('/api/attendance/my-attendance', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
