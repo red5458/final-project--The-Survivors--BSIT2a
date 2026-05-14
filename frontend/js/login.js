@@ -1,11 +1,8 @@
 // frontend/js/login.js
 
-// DYNAMIC API URL SETUP:
-// If your frontend and backend are hosted separately on Render, replace the production URL
-// with your actual Render backend link (e.g., 'https://the-survivors-backend.onrender.com/api')
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? '/api'
-  : '/api'; // <-- CHANGE THIS TO YOUR RENDER BACKEND URL IF HOSTED SEPARATELY
+  : 'https://final-project-the-survivors-bsit2a-6cdr.onrender.com/api';
 
 document.addEventListener('DOMContentLoaded', function () {
   const token = localStorage.getItem('token');
@@ -64,14 +61,13 @@ document.addEventListener('DOMContentLoaded', function () {
         body: JSON.stringify({ email, password })
       });
 
-      // Safely attempt to parse JSON in case the server returns an HTML error page
       let data;
       try {
         data = await response.json();
         console.log('Login response:', data);
       } catch (parseError) {
-        console.error('Failed to parse response as JSON. Check if your backend URL is correct.', parseError);
-        alert('Server error: Did not receive valid JSON. Check the console for details.');
+        console.error('Failed to parse response as JSON.', parseError);
+        alert('Server error: Did not receive valid JSON. Check your Render logs.');
         return;
       }
 
@@ -80,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
           const errorMessages = data.errors.map(err => `${err.field}: ${err.message}`).join('\n');
           alert(`Validation Errors:\n${errorMessages}`);
         } else {
-          // Exposing the exact error message (e.g., "Wrong password" or "User not found")
+          // This will show you exactly what the backend is complaining about
           alert(`Error (${response.status}): ${data.message || 'Login failed'}`);
         }
         return;
@@ -103,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     } catch (error) {
       console.error('Login error:', error);
-      alert('❌ Cannot connect to server. Check your internet connection or ensure the backend URL is properly configured.');
+      alert('❌ Cannot connect to server. Check your internet connection or backend status.');
     } finally {
       submitBtn.textContent = originalText;
       submitBtn.disabled = false;
