@@ -29,7 +29,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     evt.currentTarget.classList.add('active');
     document.getElementById(tabName + 'Tab').classList.add('active');
+
+    if (tabName === 'schedule') {
+      loadSchedule();
+    }
   };
+
+  // ── Attendance Records ──────────────────────────────────────
 
   async function loadAttendance() {
     const tableBody = document.getElementById('attendanceTableBody');
@@ -39,9 +45,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     try {
       const response = await fetch('http://localhost:3000/api/attendance', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       const data = await response.json();
@@ -88,12 +92,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  // ── Stats ───────────────────────────────────────────────────
+
   async function loadStats() {
     try {
       const response = await fetch('http://localhost:3000/api/attendance/stats', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       const data = await response.json();
@@ -110,7 +114,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  // Load student activity summary from NEW backend endpoint
+  // ── Student Summary ─────────────────────────────────────────
+
   async function loadStudentSummary() {
     const grid = document.getElementById('studentSummaryGrid');
     if (!grid) return;
@@ -119,9 +124,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     try {
       const response = await fetch('http://localhost:3000/api/attendance/student-summary', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       const result = await response.json();
@@ -134,7 +137,6 @@ document.addEventListener('DOMContentLoaded', function () {
       const students = result.data;
       renderStudentCards(students);
 
-      // Search filter for students
       const studentSearchInput = document.getElementById('studentSearchInput');
       if (studentSearchInput) {
         studentSearchInput.addEventListener('input', function () {
@@ -147,26 +149,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
       }
 
-      // Sort filter
       const sortFilter = document.getElementById('sortFilter');
       if (sortFilter) {
         sortFilter.addEventListener('change', function () {
           const sortBy = this.value;
           let sorted = [...students];
-
           switch (sortBy) {
-            case 'name':
-              sorted.sort((a, b) => a.studentName.localeCompare(b.studentName));
-              break;
-            case 'absent':
-              sorted.sort((a, b) => b.Absent - a.Absent);
-              break;
-            case 'late':
-              sorted.sort((a, b) => b.Late - a.Late);
-              break;
-            case 'early':
-              sorted.sort((a, b) => b.Early - a.Early);
-              break;
+            case 'name': sorted.sort((a, b) => a.studentName.localeCompare(b.studentName)); break;
+            case 'absent': sorted.sort((a, b) => b.Absent - a.Absent); break;
+            case 'late': sorted.sort((a, b) => b.Late - a.Late); break;
+            case 'early': sorted.sort((a, b) => b.Early - a.Early); break;
           }
           renderStudentCards(sorted);
         });
@@ -194,15 +186,10 @@ document.addEventListener('DOMContentLoaded', function () {
       const latePct = student.percentages?.Late?.toFixed(1) || ((student.Late / total) * 100).toFixed(1);
       const absentPct = student.percentages?.Absent?.toFixed(1) || ((student.Absent / total) * 100).toFixed(1);
 
-      // Determine status message
       let statusMsg = '';
-      if (student.Absent === 0 && student.Late === 0) {
-        statusMsg = ' ⭐ Perfect Attendance!';
-      } else if (student.Absent >= 5) {
-        statusMsg = ' ⚠️ High Absence Rate';
-      } else if (student.Late >= 5) {
-        statusMsg = ' 🕐 Frequently Late';
-      }
+      if (student.Absent === 0 && student.Late === 0) statusMsg = ' ⭐ Perfect Attendance!';
+      else if (student.Absent >= 5) statusMsg = ' ⚠️ High Absence Rate';
+      else if (student.Late >= 5) statusMsg = ' 🕐 Frequently Late';
 
       return `
         <div class="student-card">
@@ -236,15 +223,135 @@ document.addEventListener('DOMContentLoaded', function () {
     }).join('');
   }
 
+  // ── Class Schedule ──────────────────────────────────────────
+
+  function formatTime(hhmm) {
+    if (!hhmm) return '--:--';
+    const [h, m] = hhmm.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hour = h % 12 || 12;
+    return `${hour}:${String(m).padStart(2, '0')} ${period}`;
+  }
+
+  function addMinutes(hhmm, mins) {
+    if (!hhmm) return '--:--';
+    const [h, m] = hhmm.split(':').map(Number);
+    const total = h * 60 + m + mins;
+    const newH = Math.floor(total / 60) % 24;
+    const newM = total % 60;
+    return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+  }
+
+  function updatePreview() {
+    const startTime = document.getElementById('startTime').value;
+    const allowance = parseInt(document.getElementById('allowanceTime').value) || 5;
+    if (!startTime) return;
+
+    const onTimeEnd = addMinutes(startTime, allowance);
+    const absentStart = addMinutes(startTime, 60);
+
+    document.getElementById('previewEarly').textContent = `Before ${formatTime(startTime)}`;
+    document.getElementById('previewOnTime').textContent = `${formatTime(startTime)} – ${formatTime(onTimeEnd)}`;
+    document.getElementById('previewLate').textContent = `${formatTime(onTimeEnd)} – ${formatTime(absentStart)}`;
+    document.getElementById('previewAbsent').textContent = `After ${formatTime(absentStart)}`;
+  }
+
+  document.getElementById('startTime')?.addEventListener('input', updatePreview);
+  document.getElementById('endTime')?.addEventListener('input', updatePreview);
+  document.getElementById('allowanceTime')?.addEventListener('input', updatePreview);
+
+  async function loadSchedule() {
+    try {
+      const response = await fetch('http://localhost:3000/api/schedule', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      if (data.data) {
+        const s = data.data;
+        document.getElementById('className').value = s.className || '';
+        document.getElementById('startTime').value = s.startTime || '';
+        document.getElementById('endTime').value = s.endTime || '';
+        document.getElementById('allowanceTime').value = s.allowanceMinutes ?? 5;
+
+        const onTimeEnd = addMinutes(s.startTime, s.allowanceMinutes ?? 5);
+        const absentStart = addMinutes(s.startTime, 60);
+
+        const banner = document.getElementById('currentScheduleBanner');
+        banner.style.display = 'block';
+        document.getElementById('scheduleInfo').innerHTML = `
+          <div class="stat-card">
+            <h3>Class</h3>
+            <div class="number" style="font-size: 1.1rem;">${s.className}</div>
+          </div>
+          <div class="stat-card ontime">
+            <h3>Start Time</h3>
+            <div class="number" style="font-size: 1.1rem;">${formatTime(s.startTime)}</div>
+          </div>
+          <div class="stat-card late">
+            <h3>End Time</h3>
+            <div class="number" style="font-size: 1.1rem;">${formatTime(s.endTime)}</div>
+          </div>
+          <div class="stat-card absent">
+            <h3>On-Time Until</h3>
+            <div class="number" style="font-size: 1.1rem;">${formatTime(onTimeEnd)}</div>
+          </div>
+        `;
+
+        updatePreview();
+      }
+    } catch (error) {
+      console.error('Error loading schedule:', error);
+    }
+  }
+
+  document.getElementById('scheduleForm')?.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const className = document.getElementById('className').value.trim();
+    const startTime = document.getElementById('startTime').value;
+    const endTime = document.getElementById('endTime').value;
+    const allowanceMinutes = parseInt(document.getElementById('allowanceTime').value);
+
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.textContent = 'Saving...';
+    submitBtn.disabled = true;
+
+    try {
+      const response = await fetch('http://localhost:3000/api/schedule', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ className, startTime, endTime, allowanceMinutes })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('✅ Class schedule saved! Attendance classification will now use these settings.');
+        loadSchedule();
+      } else {
+        alert(data.message || 'Failed to save schedule');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('❌ Cannot connect to server.');
+    } finally {
+      submitBtn.textContent = '💾 Save Schedule';
+      submitBtn.disabled = false;
+    }
+  });
+
+  // ── Search & Filter ─────────────────────────────────────────
+
   const searchInput = document.getElementById('searchInput');
   if (searchInput) {
     searchInput.addEventListener('input', function () {
       const term = this.value.toLowerCase();
-      const rows = document.querySelectorAll('#attendanceTableBody tr');
-
-      rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(term) ? '' : 'none';
+      document.querySelectorAll('#attendanceTableBody tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
       });
     });
   }
@@ -253,24 +360,18 @@ document.addEventListener('DOMContentLoaded', function () {
   if (statusFilter) {
     statusFilter.addEventListener('change', function () {
       const status = this.value;
-      const rows = document.querySelectorAll('#attendanceTableBody tr');
-
-      rows.forEach(row => {
-        if (!status || row.textContent.includes(status)) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
+      document.querySelectorAll('#attendanceTableBody tr').forEach(row => {
+        row.style.display = (!status || row.textContent.includes(status)) ? '' : 'none';
       });
     });
   }
 
+  // ── View Details ────────────────────────────────────────────
+
   window.viewDetails = async function (id) {
     try {
       const response = await fetch(`http://localhost:3000/api/attendance/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       const data = await response.json();
@@ -280,22 +381,22 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       const record = data.data;
-      const details = `
+      alert(`
         Student: ${record.user?.username || record.studentId}
         ID: ${record.studentId}
         Date: ${new Date(record.timeIn).toLocaleString()}
         Status: ${record.status}
         Subject: ${record.subject || 'General'}
         Notes: ${record.notes || 'None'}
-      `;
-
-      alert(details);
+      `);
 
     } catch (error) {
       console.error('Error:', error);
       alert('Failed to load details');
     }
   };
+
+  // ── Init ────────────────────────────────────────────────────
 
   loadAttendance();
   loadStats();

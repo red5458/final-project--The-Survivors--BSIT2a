@@ -1,15 +1,13 @@
-/* ========== GLOBAL STYLES ========== */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+/* ========== UTILITY CLASSES ========== */
+.text-indigo {
+    color: #6366f1 !important;
 }
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f5f7fa;
-    color: #333;
-    line-height: 1.6;
+.text-gradient {
+    background: linear-gradient(90deg, #6366f1, #ec4899);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 /* ========== LOGIN/REGISTER PAGE ========== */
@@ -36,17 +34,72 @@ body {
 
 /* ========== NAVBAR ========== */
 .navbar {
-    background: #2c3e50;
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
     color: white;
     padding: 1rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
 }
 
 .navbar h1 {
     font-size: 1.5rem;
+}
+
+.navbar .navbar-brand {
+    font-size: 1.8rem;
+    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.navbar .navbar-brand:hover {
+    transform: scale(1.05);
+}
+
+.navbar .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.navbar .nav-link:hover {
+    color: #fff !important;
+    transform: translateY(-1px);
+}
+
+.navbar .nav-link::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -5px;
+    left: 50%;
+    background: linear-gradient(90deg, #3498db, #e74c3c);
+    transition: all 0.3s ease;
+    transform: translateX(-50%);
+}
+
+.navbar .nav-link:hover::after {
+    width: 100%;
+}
+
+.navbar .btn-primary {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    border: none;
+    border-radius: 25px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+}
+
+.navbar .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    background: linear-gradient(135deg, #2980b9 0%, #21618c 100%);
 }
 
 .user-info {
@@ -57,6 +110,34 @@ body {
 
 .user-info span {
     font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.navbar-toggler {
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.9%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='m4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+/* Mobile navbar adjustments */
+@media (max-width: 991.98px) {
+    .navbar .navbar-nav {
+        margin-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 1rem;
+    }
+
+    .navbar .nav-link {
+        padding: 0.5rem 0;
+    }
+
+    .navbar .navbar-nav .gap-2 {
+        flex-direction: column;
+        gap: 0.5rem !important;
+    }
 }
 
 /* ========== BUTTONS ========== */

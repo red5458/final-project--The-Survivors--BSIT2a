@@ -1,14 +1,31 @@
 const Attendance = require('../models/Attendance');
 const User = require('../models/User');
+const ClassSchedule = require('../models/ClassSchedule');
 const cache = require('../utils/cache');
 
-const classifyTime = (time) => {
-  const hour = new Date(time).getHours();
-  const minute = new Date(time).getMinutes();
+const classifyTime = (time, schedule) => {
+  const checkInDate = new Date(time);
+  const hours = checkInDate.getHours();
+  const minutes = checkInDate.getMinutes();
+  const totalMinutes = hours * 60 + minutes;
 
-  if (hour < 8) return 'Early';
-  if (hour === 8 && minute <= 30) return 'On-Time';
-  if ((hour === 8 && minute > 30) || hour === 9) return 'Late';
+  if (schedule && schedule.startTime) {
+    const [startHour, startMin] = schedule.startTime.split(':').map(Number);
+    const startTotal = startHour * 60 + startMin;
+    const allowance = schedule.allowanceMinutes ?? 5;
+    const lateThreshold = startTotal + allowance;
+    const absentThreshold = startTotal + 60; // 1 hour after start = Absent
+
+    if (totalMinutes < startTotal) return 'Early';
+    if (totalMinutes <= lateThreshold) return 'On-Time';
+    if (totalMinutes < absentThreshold) return 'Late';
+    return 'Absent';
+  }
+
+  // Default fallback if no schedule is saved yet
+  if (hours < 8) return 'Early';
+  if (hours === 8 && minutes <= 30) return 'On-Time';
+  if ((hours === 8 && minutes > 30) || hours === 9) return 'Late';
   return 'Absent';
 };
 
@@ -22,9 +39,11 @@ exports.checkIn = async (req, res) => {
     }
 
     const now = new Date();
-    const status = classifyTime(now);
 
-    // FIX: was `studentId` (undefined variable). Use student.studentId instead.
+    // Fetch active schedule from DB
+    const schedule = await ClassSchedule.findOne().sort({ updatedAt: -1 });
+    const status = classifyTime(now, schedule);
+
     const studentIdValue = student.studentId || student._id.toString();
 
     const record = new Attendance({
@@ -32,7 +51,7 @@ exports.checkIn = async (req, res) => {
       user: student._id,
       timeIn: now,
       status,
-      subject: subject || 'General',
+      subject: subject || (schedule?.className) || 'General',
       notes: notes || ''
     });
 
@@ -55,6 +74,7 @@ exports.checkIn = async (req, res) => {
   }
 };
 
+// Keep all other exports exactly as they were (getAll, getMyAttendance, getById, getStats, getStudentSummary, update, deleteAttendance)
 exports.getAll = async (req, res) => {
   try {
     const cachedData = cache.get('attendance_all');

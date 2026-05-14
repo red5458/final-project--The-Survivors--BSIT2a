@@ -7,15 +7,29 @@
     <title>Teacher Dashboard - Smart Attendance</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
-    <!-- FIX: Removed <base target="_blank"> which caused logout redirect to open new tab instead of navigating -->
 </head>
 
 <body>
     <nav class="navbar">
-        <h1>📊 Smart Attendance - Teacher Dashboard</h1>
+        <div class="d-flex align-items-center">
+            <i class="fas fa-chart-line me-2"></i>
+            <h1>📊 Smart Attendance - Teacher Dashboard</h1>
+        </div>
         <div class="user-info">
             <span>Welcome, <strong id="teacherName">Teacher</strong></span>
-            <button id="logoutBtn" class="btn btn-danger">Logout</button>
+            <div class="dropdown">
+                <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-user-circle me-1"></i>Menu
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="profile.html"><i class="fas fa-user me-2"></i>Profile</a></li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
+                    <li><a class="dropdown-item" id="logoutBtn" href="#"><i
+                                class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                </ul>
+            </div>
         </div>
     </nav>
 
@@ -48,13 +62,13 @@
         <div class="tabs">
             <div class="tab active" onclick="switchTab(event, 'records')">📋 All Attendance Records</div>
             <div class="tab" onclick="switchTab(event, 'students')">👥 Student Activity Summary</div>
+            <div class="tab" onclick="switchTab(event, 'schedule')">⚙️ Class Settings</div>
         </div>
 
         <!-- Attendance Records Tab -->
         <div id="recordsTab" class="tab-content active">
             <div class="card">
                 <h2>📋 All Attendance Records</h2>
-
                 <div class="filters">
                     <input type="text" id="searchInput" placeholder="🔍 Search by name or ID...">
                     <select id="statusFilter">
@@ -65,7 +79,6 @@
                         <option value="Absent">Absent</option>
                     </select>
                 </div>
-
                 <table>
                     <thead>
                         <tr>
@@ -92,7 +105,6 @@
                 <h2>👥 Student Activity Summary</h2>
                 <p style="color: #7f8c8d; margin-bottom: 1rem;">View each student's attendance breakdown: Early, Late,
                     and Absent counts</p>
-
                 <div class="filters">
                     <input type="text" id="studentSearchInput" placeholder="🔍 Search student by name or ID...">
                     <select id="sortFilter">
@@ -102,14 +114,91 @@
                         <option value="early">Sort by Most Early</option>
                     </select>
                 </div>
-
                 <div id="studentSummaryGrid" class="student-summary-grid">
                     <div class="text-center loading" style="grid-column: 1/-1;">Loading student activity data...</div>
                 </div>
             </div>
         </div>
+
+        <!-- Class Settings Tab -->
+        <div id="scheduleTab" class="tab-content">
+
+            <!-- Current Active Schedule Banner -->
+            <div id="currentScheduleBanner" style="display: none;" class="card">
+                <h2>📌 Current Active Schedule</h2>
+                <div id="scheduleInfo" class="stats-grid" style="margin-bottom: 0;"></div>
+            </div>
+
+            <!-- Settings Form -->
+            <div class="card">
+                <h2>📅 Set Class Schedule</h2>
+                <p class="text-muted" style="margin-bottom: 1.5rem;">
+                    This schedule determines how student attendance is automatically classified.
+                </p>
+
+                <form id="scheduleForm">
+                    <div class="form-group">
+                        <label for="className">Subject / Class Name</label>
+                        <input type="text" id="className" placeholder="e.g. Mathematics - Grade 10" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="startTime">Class Start Time</label>
+                        <input type="time" id="startTime" required>
+                        <small class="text-muted">The official time the class begins.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="endTime">Class End Time</label>
+                        <input type="time" id="endTime" required>
+                        <small class="text-muted">The official time the class ends.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="allowanceTime">Late Allowance (Minutes)</label>
+                        <input type="number" id="allowanceTime" min="0" max="30" value="5" required>
+                        <small class="text-muted">
+                            Minutes after start time still considered "On-Time". Students arriving after this are marked
+                            Late. After 60 minutes from start, they are marked Absent.
+                        </small>
+                    </div>
+
+                    <div style="margin-top: 1.5rem;">
+                        <button type="submit" class="btn btn-primary">💾 Save Schedule</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Classification Preview -->
+            <div class="card">
+                <h2>📊 Classification Preview</h2>
+                <p class="text-muted" style="margin-bottom: 1rem;">
+                    Based on your settings, here is how attendance will be classified:
+                </p>
+                <div class="stats-grid">
+                    <div class="stat-card early">
+                        <h3>🟢 Early</h3>
+                        <div class="number" style="font-size: 1rem;" id="previewEarly">Before --:--</div>
+                    </div>
+                    <div class="stat-card ontime">
+                        <h3>🔵 On-Time</h3>
+                        <div class="number" style="font-size: 1rem;" id="previewOnTime">--:-- to --:--</div>
+                    </div>
+                    <div class="stat-card late">
+                        <h3>🟡 Late</h3>
+                        <div class="number" style="font-size: 1rem;" id="previewLate">--:-- to --:--</div>
+                    </div>
+                    <div class="stat-card absent">
+                        <h3>🔴 Absent</h3>
+                        <div class="number" style="font-size: 1rem;" id="previewAbsent">After --:--</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/teacher-dashboard.js"></script>
 </body>
