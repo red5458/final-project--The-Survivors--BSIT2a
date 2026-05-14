@@ -1,75 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Dashboard - Smart Attendance</title>
-    <link rel="stylesheet" href="css/teacher-dashboard.css">
+    <link rel="stylesheet" href="css/style.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; color: #333; }
-        .navbar { background: #2c3e50; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-        .navbar h1 { font-size: 1.5rem; }
-        .user-info { display: flex; align-items: center; gap: 1rem; }
-        .btn { padding: 0.5rem 1rem; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s; }
-        .btn-danger { background: #e74c3c; color: white; }
-        .btn-danger:hover { background: #c0392b; }
-        .btn-info { background: #17a2b8; color: white; }
-        .btn-info:hover { background: #138496; }
-        .container { max-width: 1400px; margin: 2rem auto; padding: 0 1rem; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-        .stat-card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
-        .stat-card h3 { font-size: 0.9rem; color: #7f8c8d; margin-bottom: 0.5rem; text-transform: uppercase; }
-        .stat-card .number { font-size: 2rem; font-weight: bold; }
-        .stat-card.early .number { color: #27ae60; }
-        .stat-card.ontime .number { color: #3498db; }
-        .stat-card.late .number { color: #f39c12; }
-        .stat-card.absent .number { color: #e74c3c; }
-        .card { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 2rem; }
-        .card h2 { margin-bottom: 1.5rem; color: #2c3e50; }
-        .filters { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-        .filters input, .filters select { padding: 0.75rem 1rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem; min-width: 200px; }
-        .filters input:focus, .filters select:focus { outline: none; border-color: #3498db; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #ecf0f1; }
-        th { background: #34495e; color: white; font-weight: 600; }
-        tr:hover { background: #f8f9fa; }
-        .badge { padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 500; }
-        .badge-success { background: #d4edda; color: #155724; }
-        .badge-primary { background: #cce5ff; color: #004085; }
-        .badge-warning { background: #fff3cd; color: #856404; }
-        .badge-danger { background: #f8d7da; color: #721c24; }
-        .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.85rem; }
-        .text-center { text-align: center; }
-        .text-danger { color: #e74c3c; }
-        .loading { padding: 2rem; text-align: center; color: #7f8c8d; }
-
-        /* New styles for student activity summary */
-        .student-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-        .student-card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .student-card h4 { color: #2c3e50; margin-bottom: 1rem; font-size: 1.1rem; }
-        .student-card .student-id { color: #7f8c8d; font-size: 0.85rem; margin-bottom: 0.75rem; }
-        .mini-stats { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-        .mini-stat { padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500; }
-        .mini-stat.early { background: #d4edda; color: #155724; }
-        .mini-stat.ontime { background: #cce5ff; color: #004085; }
-        .mini-stat.late { background: #fff3cd; color: #856404; }
-        .mini-stat.absent { background: #f8d7da; color: #721c24; }
-        .progress-bar { width: 100%; height: 8px; background: #ecf0f1; border-radius: 4px; margin-top: 0.75rem; overflow: hidden; }
-        .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
-        .progress-fill.early { background: #27ae60; }
-        .progress-fill.ontime { background: #3498db; }
-        .progress-fill.late { background: #f39c12; }
-        .progress-fill.absent { background: #e74c3c; }
-        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid #ecf0f1; }
-        .tab { padding: 0.75rem 1.5rem; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.3s; }
-        .tab.active { border-bottom-color: #3498db; color: #3498db; font-weight: 600; }
-        .tab:hover { color: #3498db; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
+        /* Page-specific teacher styles can go here */
     </style>
-<base target="_blank">
+    <base target="_blank">
 </head>
+
 <body>
     <nav class="navbar">
         <h1>📊 Smart Attendance - Teacher Dashboard</h1>
@@ -106,8 +48,8 @@
 
         <!-- Tabs -->
         <div class="tabs">
-            <div class="tab active" onclick="switchTab('records')">📋 All Attendance Records</div>
-            <div class="tab" onclick="switchTab('students')">👥 Student Activity Summary</div>
+            <div class="tab active" onclick="switchTab(event, 'records')">📋 All Attendance Records</div>
+            <div class="tab" onclick="switchTab(event, 'students')">👥 Student Activity Summary</div>
         </div>
 
         <!-- Attendance Records Tab -->
@@ -150,7 +92,8 @@
         <div id="studentsTab" class="tab-content">
             <div class="card">
                 <h2>👥 Student Activity Summary</h2>
-                <p style="color: #7f8c8d; margin-bottom: 1rem;">View each student's attendance breakdown: Early, Late, and Absent counts</p>
+                <p style="color: #7f8c8d; margin-bottom: 1rem;">View each student's attendance breakdown: Early, Late,
+                    and Absent counts</p>
 
                 <div class="filters">
                     <input type="text" id="studentSearchInput" placeholder="🔍 Search student by name or ID...">
@@ -172,4 +115,5 @@
     <script src="js/auth.js"></script>
     <script src="js/teacher-dashboard.js"></script>
 </body>
+
 </html>

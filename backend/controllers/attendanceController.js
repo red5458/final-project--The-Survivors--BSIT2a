@@ -7,26 +7,25 @@ const classifyTime = (time) => {
   const minute = new Date(time).getMinutes();
 
   if (hour < 8) return 'Early';
-  if (hour === 8 && minute <= 30) return 'On-Time'; 
+  if (hour === 8 && minute <= 30) return 'On-Time';
   if (hour === 8 && minute > 30 || hour === 9) return 'Late';
   return 'Absent';
 };
 
 exports.checkIn = async (req, res) => {
   try {
-    const { studentId, subject, notes } = req.body;
+    const { subject, notes } = req.body;
 
-    // Verify student exists
-    const student = await User.findOne({ studentId });
-    if (!student) {
-      return res.status(404).json({ success: false, message: 'Student ID not found' });
+    const student = await User.findById(req.user.id);
+    if (!student || student.role !== 'student') {
+      return res.status(403).json({ success: false, message: 'Only student accounts can check in' });
     }
 
     const now = new Date();
     const status = classifyTime(now);
 
     const record = new Attendance({
-      studentId,
+      studentId: student.studentId || student._id.toString(),
       user: student._id,
       timeIn: now,
       status,

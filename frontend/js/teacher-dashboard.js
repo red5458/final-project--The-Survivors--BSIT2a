@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   const token = localStorage.getItem('token');
   const user = localStorage.getItem('currentUser');
 
@@ -16,18 +16,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
   document.getElementById('teacherName').textContent = userData.username || 'Teacher';
 
-  document.getElementById('logoutBtn')?.addEventListener('click', function() {
+  document.getElementById('logoutBtn')?.addEventListener('click', function () {
     localStorage.removeItem('token');
     localStorage.removeItem('currentUser');
     window.location.href = 'login.html';
   });
 
   // Tab switching
-  window.switchTab = function(tabName) {
+  window.switchTab = function (evt, tabName) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
 
-    event.target.classList.add('active');
+    evt.currentTarget.classList.add('active');
     document.getElementById(tabName + 'Tab').classList.add('active');
   };
 
@@ -137,10 +137,10 @@ document.addEventListener('DOMContentLoaded', function() {
       // Search filter for students
       const studentSearchInput = document.getElementById('studentSearchInput');
       if (studentSearchInput) {
-        studentSearchInput.addEventListener('input', function() {
+        studentSearchInput.addEventListener('input', function () {
           const term = this.value.toLowerCase();
-          const filtered = students.filter(s => 
-            s.studentName.toLowerCase().includes(term) || 
+          const filtered = students.filter(s =>
+            s.studentName.toLowerCase().includes(term) ||
             s.studentId.toLowerCase().includes(term)
           );
           renderStudentCards(filtered);
@@ -150,11 +150,11 @@ document.addEventListener('DOMContentLoaded', function() {
       // Sort filter
       const sortFilter = document.getElementById('sortFilter');
       if (sortFilter) {
-        sortFilter.addEventListener('change', function() {
+        sortFilter.addEventListener('change', function () {
           const sortBy = this.value;
           let sorted = [...students];
 
-          switch(sortBy) {
+          switch (sortBy) {
             case 'name':
               sorted.sort((a, b) => a.studentName.localeCompare(b.studentName));
               break;
@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const searchInput = document.getElementById('searchInput');
   if (searchInput) {
-    searchInput.addEventListener('input', function() {
+    searchInput.addEventListener('input', function () {
       const term = this.value.toLowerCase();
       const rows = document.querySelectorAll('#attendanceTableBody tr');
 
@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const statusFilter = document.getElementById('statusFilter');
   if (statusFilter) {
-    statusFilter.addEventListener('change', function() {
+    statusFilter.addEventListener('change', function () {
       const status = this.value;
       const rows = document.querySelectorAll('#attendanceTableBody tr');
 
@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  window.viewDetails = async function(id) {
+  window.viewDetails = async function (id) {
     try {
       const response = await fetch(`http://localhost:3000/api/attendance/${id}`, {
         headers: {
