@@ -3,29 +3,31 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const xss = require('xss-clean');
-const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
+// Trust Render's reverse proxy
+app.set('trust proxy', 1);
+
 connectDB();
 
-app.use(helmet({
-  contentSecurityPolicy: false
-}));
-app.use(xss());
+// Body parsing FIRST — must be before validation middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Security middleware AFTER body parsing
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(mongoSanitize());
 
 app.use(cors({
   origin: '*',
   credentials: false
 }));
-
-app.use(express.json());
 
 const loginLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
@@ -81,7 +83,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`🌐 Website URL: http://localhost:${PORT}`);
-  console.log(`🔒 Security features enabled: Helmet, XSS Protection, Mongo Sanitize, Rate Limiting`);
+  console.log(`🔒 Security features enabled: Helmet, Mongo Sanitize, Rate Limiting`);
 });
 
 process.on('unhandledRejection', (err) => {
